@@ -1,0 +1,266 @@
+import { useNavigate } from 'react-router-dom'
+import { useSEO } from '../hooks/useSEO'
+import { useAsync } from '../hooks/useAsync'
+import { productRepository } from '../services/products'
+import { socialVideosRepository } from '../services/socialVideos'
+import { promotionsRepository } from '../services/promotions'
+import { STORE_WHATSAPP_NUMBER } from '../utils/whatsapp'
+import { Container, Section, SectionHeader } from '../components/layout'
+import { Spinner } from '../components/ui'
+import {
+  HeroCarousel,
+  CategoryCarousel,
+  PromotionStrip,
+  WhyChooseUs,
+  TestimonialCarousel,
+  InstagramReels,
+  TrustedDestination,
+  SpecialistCTA,
+} from '../features/home'
+import { MOCK_HERO_SLIDES, MOCK_WHY_US, MOCK_TESTIMONIALS } from '../data'
+
+// Categories come from ProductRepository (real product-catalog data);
+// Reels now come from SocialVideosRepository (see
+// src/services/socialVideos) — real Supabase-backed "Watch Us In Action"
+// content as of Step 3 (db/migrations/0008_social_videos.sql +
+// 0009/0010's Storage policies). hero/promotions/why-us/testimonials still
+// have no repository — no backend covers that marketing content, so it's
+// still read directly from src/data, same as every feature-component demo
+// so far.
+//
+// TRENDING NOW and MUST HAVES are now real rows in the categories table
+// (see db/migrations/0007_trending_must_haves_categories.sql) — official
+// customer-facing categories like DRY STORAGES or BOTTLES, not a Home-only
+// concept. They arrive from productRepository.getCategories() already in
+// the correct sort_order, so no client-side splicing is needed any more.
+//
+// SERVING and SPARE PARTS still have a NULL `image` column in Supabase (no
+// photo uploaded via Admin yet) — this only swaps the locally-displayed
+// `image` for the client-approved photo; their id/name/tagline/sort_order
+// still come from productRepository.getCategories() untouched, and nothing
+// is written back to Supabase. TRENDING NOW and MUST HAVES need no entry
+// here — their approved images are set directly on the category row by
+// db/migrations/0007_trending_must_haves_categories.sql, the same way
+// every other populated category's image already works.
+const LOCAL_IMAGE_OVERRIDES = {
+  SERVING: '/images/category_serving.webp',
+  'SPARE PARTS': '/images/category_spare_parts.webp',
+}
+
+function withLocalImageOverrides(categories) {
+  return categories.map((c) =>
+    LOCAL_IMAGE_OVERRIDES[c.name]
+      ? { ...c, image: LOCAL_IMAGE_OVERRIDES[c.name] }
+      : c
+  )
+}
+
+// Featured Highlights now reads real is_active=true promotions from
+// promotionsRepository (see db/migrations/0012_promotions.sql,
+// src/admin/pages/AdminPromotionsPage.jsx for how they're managed) instead
+// of products.featured/getFeaturedProducts() — that function is left
+// completely alone in ProductRepository, it's simply no longer called from
+// here. PromotionStrip.jsx itself is untouched except one additive line
+// (an optional `whatsappMessage` field it now honors when present): this
+// only adapts each Promotion's existing fields to the plain {id, title,
+// description, image, badge, buttonText} shape it already expects, using
+// real promotion data only (title/description/badge/button_text as
+// entered in Admin, no invented marketing copy).
+//
+// PROMOTION IMAGE ≠ PRODUCT IMAGE — `image` below is always
+// `promotion.image`, never a tagged product's own image, and promotions.
+// image is `not null` (enforced by both the DB constraint and the Admin
+// form), so no fallback is needed or added here.
+//
+// A promotion has no `slug`/detail page of its own (by design — see
+// db/migrations/0012_promotions.sql; no detail page is added in this
+// step). `products` is kept on the mapped object (not read by
+// PromotionStrip itself, which has no knowledge of it) purely so this
+// page's own onSelect/whatsappMessage logic below can inspect the tagged
+// products: exactly one tagged product routes "View Offer" to that
+// product's own real Product Detail page; zero or multiple route to the
+// general Shop catalogue instead, since there is no existing multi-product
+// bundle page to link to and this step must not invent one.
+function toFeaturedHighlight(promotion) {
+  return {
+    id: promotion.id,
+    title: promotion.title,
+    description: promotion.description,
+    image: promotion.image,
+    badge: promotion.badge,
+    buttonText: promotion.buttonText,
+    whatsappMessage: promotion.whatsappText || buildDefaultPromotionWhatsappMessage(promotion),
+    products: promotion.products,
+  }
+}
+
+// Only used when the admin left whatsapp_text blank for this promotion —
+// mirrors the shape of PromotionStrip's own previous hardcoded fallback
+// message (title-only), extended with tagged product names when any exist,
+// per this step's own example ("Hi, I am interested in the Kitchen
+// Organisation Combo."). Never exposes a raw id/uuid.
+function buildDefaultPromotionWhatsappMessage(promotion) {
+  const productNames = promotion.products.map((p) => p.name)
+  if (productNames.length === 0) {
+    return `Hi, I am interested in the ${promotion.title} offer.`
+  }
+  return `Hi, I am interested in the ${promotion.title} offer (${productNames.join(', ')}).`
+}
+
+export default function HomePage() {
+  const navigate = useNavigate()
+
+  useSEO({
+    title: 'Tupperware Exclusive Store Kerala | Home',
+    description:
+      'Browse genuine Tupperware kitchen storage, bottles, lunch boxes, thermal flasks and home essentials from an official Tupperware exclusive store in Kerala. Send direct WhatsApp enquiries.',
+  })
+
+  const { data: categories, loading: categoriesLoading } = useAsync(
+    () => productRepository.getCategories(),
+    []
+  )
+
+  const { data: promotions, loading: featuredLoading } = useAsync(
+    () => promotionsRepository.getActivePromotions(),
+    []
+  )
+  const featuredHighlights = (promotions ?? []).map(toFeaturedHighlight)
+
+  // On error, `reels` stays null and `reels ?? []` becomes `[]` below —
+  // same as categories/featuredProducts above, this treats a Supabase
+  // failure identically to "no published Reels yet" rather than crashing
+  // or surfacing a raw error to the customer. Never falls back to
+  // MOCK_REELS: with 0 published rows (or a failed fetch), the section
+  // hides entirely, exactly like Featured Highlights does for 0 featured
+  // products.
+  const { data: reels, loading: reelsLoading } = useAsync(
+    () => socialVideosRepository.getPublishedReels(),
+    []
+  )
+
+  return (
+    <>
+      <HeroCarousel
+        slides={MOCK_HERO_SLIDES.map((slide) => ({
+          ...slide,
+          primaryCta: {
+            ...slide.primaryCta,
+            onClick: () => navigate(slide.primaryCta.href),
+          },
+          secondaryCta: {
+            ...slide.secondaryCta,
+            onClick: () =>
+              window.open(
+                `https://wa.me/${STORE_WHATSAPP_NUMBER}`,
+                '_blank',
+                'noopener'
+              ),
+          },
+        }))}
+      />
+
+      <Section>
+        <Container>
+          {categoriesLoading ? (
+            <Spinner className="h-40 w-full" />
+          ) : (
+            <CategoryCarousel
+              showHeader
+              eyebrow="Explore Collections"
+              title="Shop By Category"
+              description="Browse our full range of product categories."
+              categories={withLocalImageOverrides(categories ?? [])}
+              onSelect={(category) => navigate(`/shop?category=${category.id}`)}
+            />
+          )}
+        </Container>
+      </Section>
+
+      {(featuredLoading || featuredHighlights.length > 0) && (
+        <Section id="featured-offers" className="scroll-mt-24">
+          <Container>
+            {featuredLoading ? (
+              <Spinner className="h-40 w-full" />
+            ) : (
+              <PromotionStrip
+                eyebrow="SPECIAL BANNERS"
+                title="Featured Highlights"
+                description="Ongoing limited combos and curated kit promotions for Kerala customers."
+                promotions={featuredHighlights}
+                onSelect={(promo) => {
+                  const singleProduct =
+                    promo.products?.length === 1 ? promo.products[0] : null
+                  navigate(singleProduct ? `/product/${singleProduct.slug}` : '/shop')
+                }}
+              />
+            )}
+          </Container>
+        </Section>
+      )}
+
+      <Section grey>
+        <Container>
+          <SectionHeader
+            eyebrow="The Difference"
+            title="Why Choose Us"
+            description="Discover why thousands of homes trust our genuine Tupperware products, lifetime quality, and dedicated service."
+          />
+          <WhyChooseUs items={MOCK_WHY_US} />
+        </Container>
+      </Section>
+
+      {(reelsLoading || (reels ?? []).length > 0) && (
+        <Section>
+          <Container>
+            <SectionHeader
+              eyebrow="As Seen On Instagram"
+              title="Watch Us In Action"
+              description="Explore practical organization tips, product demonstrations, and kitchen ideas from our Instagram feed."
+            />
+            {reelsLoading ? (
+              <Spinner className="h-40 w-full" />
+            ) : (
+              <InstagramReels reels={reels ?? []} />
+            )}
+          </Container>
+        </Section>
+      )}
+
+      <Section grey>
+        <Container>
+          <TrustedDestination
+            onLearnMore={() => {
+              const el = document.getElementById('featured-offers')
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth' })
+              } else {
+                navigate('/promotions')
+              }
+            }}
+          />
+        </Container>
+      </Section>
+
+      <Section>
+        <Container>
+          <TestimonialCarousel testimonials={MOCK_TESTIMONIALS} />
+        </Container>
+      </Section>
+
+      <Section className="pt-0 pb-12 md:pb-20">
+        <Container>
+          <SpecialistCTA
+            onChatWhatsApp={() =>
+              window.open(
+                `https://wa.me/${STORE_WHATSAPP_NUMBER}`,
+                '_blank',
+                'noopener'
+              )
+            }
+          />
+        </Container>
+      </Section>
+    </>
+  )
+}

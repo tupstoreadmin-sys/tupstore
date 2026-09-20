@@ -1,0 +1,47 @@
+-- Tupstore — service_role SELECT grant on enquiries/enquiry_items
+--
+-- ROOT CAUSE (confirmed via direct information_schema.role_table_grants /
+-- pg_roles inspection against the live database, not guessed):
+--   - The notify-enquiry Edge Function creates its Supabase client with
+--     SUPABASE_SERVICE_ROLE_KEY (confirmed by reading the deployed source
+--     — it never touches the caller's session/anon/authenticated key).
+--   - `service_role` has rolbypassrls = true, so RLS policies are not the
+--     issue here at all.
+--   - However `service_role` currently holds only REFERENCES/TRIGGER/
+--     TRUNCATE on both public.enquiries and public.enquiry_items — it has
+--     NEVER held a base SELECT grant on either table. This predates and is
+--     unrelated to migration 0015 (which only ever revoked SELECT FROM
+--     anon, never touched service_role).
+--   - A missing base GRANT is checked by Postgres before RLS is ever
+--     evaluated, so every service-role SELECT against these two tables
+--     fails immediately with 42501 (insufficient_privilege) — this is the
+--     exact error seen in the notify-enquiry function logs
+--     ("enquiry lookup failed 42501") for the real TEST ENQUIRY submission
+--     (reference id 5f9abedc-8d1a-4398-900b-4f22eba1447c).
+--
+-- This migration does exactly one thing: grants SELECT on both tables to
+-- service_role, matching what every other service-role-only, server-side
+-- caller in this project needs and already implicitly assumes. It does
+-- NOT grant SELECT (or anything else) to anon or authenticated — both
+-- remain exactly as migration 0015 left them. It does NOT add, drop, or
+-- modify any RLS policy — service_role bypasses RLS entirely regardless,
+-- so no policy is needed or added for it.
+--
+-- Does NOT touch: anon's INSERT policies, authenticated's admin SELECT
+-- (0015) or UPDATE (0014) policies, or the still-separately-flagged
+-- anon TRUNCATE/REFERENCES/TRIGGER grants (left exactly as-is, per the
+-- existing deferred cleanup task).
+--
+-- NOT applied automatically. This file is for review only — do not run
+-- `supabase db push`, do not paste this into the Dashboard SQL Editor,
+-- until it has been explicitly approved. Once approved, apply it manually
+-- through the Supabase Dashboard SQL Editor, exactly like every prior
+-- migration in this project.
+
+grant select on public.enquiries      to service_role;
+grant select on public.enquiry_items  to service_role;
+
+-- End of migration. service_role gains exactly SELECT on both tables (the
+-- only privilege notify-enquiry actually exercises — it never inserts,
+-- updates, or deletes). anon and authenticated privileges are completely
+-- unchanged. No RLS policy is added, dropped, or modified.

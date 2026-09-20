@@ -1,0 +1,82 @@
+-- Tupstore — Product Image Storage SELECT policy migration
+-- Adds ONLY one admin-gated SELECT policy that
+-- db/migrations/0006_admin_product_storage.sql omitted, on the same
+-- `product-images` bucket it created. Nothing else changes.
+--
+-- WHY THIS IS NEEDED (found during Step 3 of the Product Catalogue Bulk
+-- Import work, not a hypothetical): this is the exact same gap already
+-- found and fixed for social videos in
+-- db/migrations/0010_social_video_storage_select.sql. Supabase Storage's
+-- list()/remove()/update() operations resolve their target object(s) via
+-- an RLS-gated SELECT against storage.objects BEFORE applying the list/
+-- delete/update itself. 0006 gave `authenticated` INSERT/UPDATE/DELETE
+-- policies on `product-images` but no SELECT policy — matching
+-- 0003_admin_category_storage.sql's identical precedent, which has the
+-- same gap (not addressed here — this migration is scoped to
+-- `product-images` only, the bucket actually exercised by this task).
+-- Without SELECT, that internal lookup finds zero rows for an admin
+-- session, so:
+--   - supabase.storage.from('product-images').remove([path]) returns
+--     { data: [], error: null } — no error, but nothing is actually
+--     deleted, even for a real, existing, correctly-authenticated admin
+--     request.
+-- This was verified directly against production during Step 3 QA of the
+-- Product Catalogue Bulk Import engine: a real just-uploaded test image
+-- was confirmed to still be fetchable via its public URL immediately
+-- after remove() reported success with zero objects removed.
+--
+-- This silently affects TWO existing, already-shipped features, not just
+-- the new import engine:
+--   1. ProductImageManager.jsx's own "Delete" button for a product's
+--      gallery images (adminProductApi.js's deleteProductImage()) — has
+--      had this same silent no-op since it was built; a deleted gallery
+--      image's database row disappears, but its Storage file has been
+--      silently orphaned every time, invisibly, until now.
+--   2. The Product Catalogue Bulk Import engine's cleanup-on-failure path
+--      (src/admin/utils/productImportEngine.js) — when a product's import
+--      fails partway through, its already-uploaded Storage files could
+--      not actually be rolled back, only reported as if they had been.
+--
+-- WHY A SELECT POLICY IS SAFE HERE (does not affect customer-facing
+-- reads): `product-images` has `public = true` (set in 0006). A public
+-- bucket's objects are served to anyone, including anon, through
+-- Storage's public-URL endpoint (`/storage/v1/object/public/<bucket>/...`)
+-- entirely OUTSIDE of storage.objects' RLS — that is what products.image/
+-- product_images.url already resolve to, and it is what lets product
+-- images load correctly on the storefront with zero SELECT policy in
+-- place today. RLS SELECT policies on storage.objects only gate queries
+-- made THROUGH the Storage API's authenticated data plane (list/remove/
+-- update's internal lookup) — they have no effect on the public read
+-- path. Scoping this SELECT policy to `to authenticated ... and
+-- public.is_admin()` (identical shape to 0006's own INSERT/UPDATE/DELETE
+-- policies) means a non-admin authenticated user still cannot see these
+-- objects via the Storage API either — only an admin session gains
+-- anything here.
+--
+-- Deliberately NOT added: an anon SELECT policy. Public customer reads
+-- must keep working exactly as they do today, through the public-URL
+-- endpoint only, never through an RLS-gated storage.objects query.
+--
+-- Does NOT touch: the `product-images` bucket row (no change to public/
+-- file_size_limit/allowed_mime_types), the three existing INSERT/UPDATE/
+-- DELETE policies from 0006, `category-images` or any of its policies,
+-- `social-video-thumbnails`/`social-videos` or any of their policies,
+-- products, categories, or any of their policies/grants. Does NOT touch
+-- any customer-facing file.
+--
+-- NOT applied automatically. This file is for review only — do not run
+-- `supabase db push` and do not paste this into the Dashboard SQL Editor
+-- until it has been explicitly approved. Once approved, apply it manually
+-- through the Supabase Dashboard SQL Editor, exactly like every prior
+-- migration in this project.
+
+create policy "Admins can view product images" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'product-images' and public.is_admin());
+
+-- End of migration. No bucket configuration, no existing policy, no
+-- table, and no frontend file is touched by this file. A signed-in
+-- non-admin account satisfies is_admin() = false and still cannot see
+-- these objects via the Storage API; public customer reads are
+-- unaffected, since they never went through storage.objects RLS in the
+-- first place.

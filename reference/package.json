@@ -1,0 +1,14 @@
+{
+  "name": "tupperware-exclusive-store-kerala",
+  "version": "1.0.0",
+  "description": "Official Tupperware Exclusive Store Product Catalogue Homepage for Kerala, India",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
