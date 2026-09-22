@@ -73,7 +73,7 @@ export function CategoryCarousel({
   const showArrows = categories.length > 6
 
   const renderArrowControls = () => (
-    <div className="hidden md:flex items-center gap-2 self-start sm:self-end shrink-0">
+    <div className="hidden md:flex lg:hidden items-center gap-2 self-start sm:self-end shrink-0">
       <button
         type="button"
         aria-label="Previous categories"
@@ -156,7 +156,7 @@ export function CategoryCarousel({
 
       <div
         ref={scrollerRef}
-        className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory scrollbar-none md:gap-3 lg:gap-4 scroll-smooth"
+        className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory scrollbar-none md:gap-3 lg:grid lg:grid-cols-6 lg:gap-5 lg:overflow-visible lg:pb-0 lg:snap-none scroll-smooth"
       >
         {categories.map((category) => (
           <button
@@ -164,9 +164,9 @@ export function CategoryCarousel({
             type="button"
             aria-label={`Browse ${category.name}`}
             onClick={() => onSelect?.(category)}
-            className="group shrink-0 w-[155px] sm:w-[165px] md:w-[calc((100%-60px)/6)] lg:w-[calc((100%-80px)/6)] snap-start overflow-hidden rounded-lg border border-hairline bg-white text-left transition-all duration-fast ease-brand hover:shadow-subtle cursor-pointer"
+            className="group shrink-0 w-[155px] sm:w-[165px] md:w-[calc((100%-60px)/6)] lg:w-full snap-start overflow-hidden rounded-lg border border-hairline bg-white text-left transition-all duration-fast ease-brand hover:shadow-subtle cursor-pointer"
           >
-            <div className="h-[120px] md:h-[170px] overflow-hidden bg-surface-subtle">
+            <div className="h-[120px] md:h-[170px] lg:h-auto lg:aspect-[4/5] overflow-hidden bg-surface-subtle">
               <img
                 src={category.image}
                 alt={category.name}
