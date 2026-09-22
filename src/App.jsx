@@ -16,6 +16,7 @@ import { useAsync } from './hooks/useAsync'
 import { productRepository } from './services/products'
 import { subscribeToNewsletter } from './api/newsletterApi'
 import { STORE_WHATSAPP_NUMBER } from './utils/whatsapp'
+import { SOCIAL_LINKS } from './utils/socialLinks'
 import {
   MOCK_NAV_LINKS,
   MOCK_FOOTER_COLUMNS,
@@ -162,9 +163,9 @@ function AppShell() {
         mobileMenuOpen={ui.mobileMenuOpen}
         onMobileMenuToggle={ui.toggleMobileMenu}
         socialLinks={{
-          facebook: 'https://facebook.com',
-          instagram: 'https://instagram.com',
-          youtube: 'https://youtube.com',
+          facebook: SOCIAL_LINKS.facebook,
+          instagram: SOCIAL_LINKS.instagram,
+          youtube: SOCIAL_LINKS.youtube,
           whatsapp: `https://wa.me/${STORE_WHATSAPP_NUMBER}`,
         }}
       />
@@ -177,9 +178,9 @@ function AppShell() {
         onEnquiryClick={ui.openEnquiryDrawer}
         enquiryCount={enquiry.count}
         socialLinks={{
-          facebook: 'https://facebook.com',
-          instagram: 'https://instagram.com',
-          youtube: 'https://youtube.com',
+          facebook: SOCIAL_LINKS.facebook,
+          instagram: SOCIAL_LINKS.instagram,
+          youtube: SOCIAL_LINKS.youtube,
           whatsapp: `https://wa.me/${STORE_WHATSAPP_NUMBER}`,
         }}
       />
@@ -232,12 +233,12 @@ function AppShell() {
         socialLinks={[
           {
             label: 'Instagram',
-            href: 'https://instagram.com',
+            href: SOCIAL_LINKS.instagram,
             icon: <IconInstagram className="h-4 w-4" />,
           },
           {
             label: 'Facebook',
-            href: 'https://facebook.com',
+            href: SOCIAL_LINKS.facebook,
             icon: <IconFacebook className="h-4 w-4" />,
           },
           {
@@ -247,7 +248,7 @@ function AppShell() {
           },
           {
             label: 'YouTube',
-            href: 'https://youtube.com',
+            href: SOCIAL_LINKS.youtube,
             icon: <IconYouTube className="h-4 w-4" />,
           },
         ]}

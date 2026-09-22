@@ -8,6 +8,7 @@ import {
   IconMail,
 } from '../components/layout/icons'
 import { STORE_WHATSAPP_NUMBER } from '../utils/whatsapp'
+import { SOCIAL_LINKS } from '../utils/socialLinks'
 
 export default function AboutTupstorePage() {
   useSEO({
@@ -123,7 +124,7 @@ export default function AboutTupstorePage() {
 
               <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
                 <a
-                  href="https://maps.google.com/?q=Tupperware+Exclusive+Store+Thiruvalla"
+                  href={SOCIAL_LINKS.storeLocation}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-ink px-6 py-3.5 text-sm font-semibold text-white shadow-btn-primary transition-all duration-fast hover:bg-black hover:shadow-btn-primary-hover"
