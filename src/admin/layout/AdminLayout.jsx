@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/admin', label: 'Dashboard', end: true },
   { to: '/admin/products', label: 'Products' },
   { to: '/admin/categories', label: 'Categories' },
+  { to: '/admin/hero', label: 'Hero' },
   { to: '/admin/social-videos', label: 'Social Videos' },
   { to: '/admin/promotions', label: 'Promotions' },
   { to: '/admin/enquiries', label: 'Enquiries' },

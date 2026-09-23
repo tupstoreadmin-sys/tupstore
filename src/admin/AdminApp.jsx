@@ -8,6 +8,7 @@ import AdminProductsPage from './pages/AdminProductsPage'
 import AdminProductFormPage from './pages/AdminProductFormPage'
 import AdminProductImportPage from './pages/AdminProductImportPage'
 import AdminCategoriesPage from './pages/AdminCategoriesPage'
+import AdminHeroPage from './pages/AdminHeroPage'
 import AdminSocialVideosPage from './pages/AdminSocialVideosPage'
 import AdminPromotionsPage from './pages/AdminPromotionsPage'
 import AdminEnquiriesPage from './pages/AdminEnquiriesPage'
@@ -38,6 +39,7 @@ export default function AdminApp() {
             element={<AdminProductFormPage />}
           />
           <Route path="categories" element={<AdminCategoriesPage />} />
+          <Route path="hero" element={<AdminHeroPage />} />
           <Route path="social-videos" element={<AdminSocialVideosPage />} />
           <Route path="promotions" element={<AdminPromotionsPage />} />
           <Route path="enquiries" element={<AdminEnquiriesPage />} />
