@@ -45,6 +45,17 @@ const AVAILABILITY_OPTIONS = [
   { value: 'preorder', label: 'Preorder' },
 ]
 
+// `value: ''` for "No Badge" — buildProductRow()'s existing
+// `form.badge.trim() || null` already turns that into a database NULL, so
+// no change was needed there. A product loaded with some other (legacy)
+// badge value than these two is preserved via the extra option rendered
+// below, never silently reset to "No Badge" or overwritten.
+const BADGE_OPTIONS = [
+  { value: '', label: 'No Badge' },
+  { value: 'Best Seller', label: 'Best Seller' },
+  { value: 'New Arrival', label: 'New Arrival' },
+]
+
 // Same file rules as ProductImageManager.jsx's own ALLOWED_IMAGE_TYPES/
 // MAX_IMAGE_BYTES (that component duplicates adminProductApi.js's
 // validateProductImageFile() rather than importing it — this follows the
@@ -538,14 +549,22 @@ export default function AdminProductFormPage() {
             <label className="mb-1 block text-xs font-medium text-slate-600">
               Badge
             </label>
-            <input
-              type="text"
+            <select
               value={form.badge}
               onChange={setField('badge')}
               disabled={submitting}
-              placeholder="e.g. Best Seller"
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
-            />
+            >
+              {BADGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+              {form.badge &&
+                !BADGE_OPTIONS.some((option) => option.value === form.badge) && (
+                  <option value={form.badge}>{form.badge}</option>
+                )}
+            </select>
           </div>
 
           <div>

@@ -18,15 +18,57 @@ const PRODUCT_SELECT = `
   product_images ( url, alt_text, sort_order, is_primary )
 `
 
+// The price slider's own max value (ProductFilters.jsx: max={3000}, label
+// "₹3,000+") — ShopPage.jsx initializes priceMax to this same value, so at
+// that setting "₹3,000+" means "no upper limit" (the price filter is
+// skipped entirely), not "price >= 3000" — the latter would make the
+// default, untouched Shop page load with zero products whenever every
+// product happens to be priced under ₹3,000. Below this value it's a
+// normal upper cap, unchanged.
+const PRICE_SLIDER_MAX = 3000
+
+// `.or()` filter strings use `,`/`.`/`(`/`)` as syntax — escape them out of
+// a user-typed search term so a literal comma or parenthesis can't be
+// misread as separating/grouping conditions. `.ilike()` calls made outside
+// `.or()` don't need this; only values embedded in an `.or()` string do.
+function escapeOrFilterValue(value) {
+  return value.replace(/[,.()\\]/g, '\\$&')
+}
+
 /**
  * @param {import('../services/products/ProductRepository').ProductFilters} [filters]
  */
 export async function getProducts({ search, category, priceMax, inStockOnly } = {}) {
   let query = supabase.from('products').select(PRODUCT_SELECT)
 
-  if (search) query = query.ilike('name', `%${search}%`)
+  if (search) {
+    const escaped = escapeOrFilterValue(search)
+    const orParts = [
+      `name.ilike.%${escaped}%`,
+      `product_code.ilike.%${escaped}%`,
+      `description.ilike.%${escaped}%`,
+    ]
+
+    // Category name isn't a column on `products` — resolve it to matching
+    // category ids first (categories is a small, already-fetched-elsewhere
+    // reference table, so this is a cheap second query, not a full-catalog
+    // scan), then fold those ids into the same OR group as an `in` clause.
+    const { data: matchingCategories, error: categoryError } = await supabase
+      .from('categories')
+      .select('id')
+      .ilike('name', `%${search}%`)
+    handleApiError(categoryError, 'getProducts (category name search)')
+
+    if (matchingCategories && matchingCategories.length > 0) {
+      orParts.push(`category_id.in.(${matchingCategories.map((c) => c.id).join(',')})`)
+    }
+
+    query = query.or(orParts.join(','))
+  }
   if (category && category !== 'all') query = query.eq('category_id', category)
-  if (typeof priceMax === 'number') query = query.lte('price', priceMax)
+  if (typeof priceMax === 'number' && priceMax < PRICE_SLIDER_MAX) {
+    query = query.lte('price', priceMax)
+  }
   if (inStockOnly) query = query.eq('availability', 'in_stock')
 
   const { data, error } = await query
