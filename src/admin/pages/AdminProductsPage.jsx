@@ -274,12 +274,13 @@ export default function AdminProductsPage() {
 
       {state.status === 'ready' && filteredProducts.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[860px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-4 py-3 font-medium">Image</th>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Product Code</th>
+                <th className="px-4 py-3 font-medium">SKU</th>
                 <th className="px-4 py-3 font-medium">Category</th>
                 <th className="px-4 py-3 font-medium">Price</th>
                 <th className="px-4 py-3 font-medium">Availability</th>
@@ -305,6 +306,9 @@ export default function AdminProductsPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {product.product_code || '—'}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">
+                    {product.sku || '—'}
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {product.categories?.name || '—'}

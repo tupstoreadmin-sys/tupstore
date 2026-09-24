@@ -181,6 +181,7 @@ export async function parseProductImportWorkbook(file) {
   const products = rawProducts.map((row, index) => ({
     rowNumber: index + 2,
     product_code: normalizeString(row.product_code),
+    sku: normalizeString(row.sku),
     name: normalizeString(row.name),
     category: normalizeString(row.category),
     price: normalizeNumber(row.price),

@@ -9,16 +9,16 @@ import { supabase } from '../../lib/supabase'
 // service-role key is used or referenced anywhere in this file.
 //
 // Only fields that already exist in db/schema.sql (plus product_code from
-// 0005) are used — nothing here invents a column, and product_code is
-// never auto-generated: it stays NULL unless the caller explicitly
-// provides one, per the client's requirement.
+// 0005, and sku from 0023) are used — nothing here invents a column, and
+// neither product_code nor sku is ever auto-generated: each stays NULL
+// unless the caller explicitly provides one, per the client's requirement.
 //
 // This file is the data layer only, per this task's scope — no
 // Product Management UI (forms/tables/modals) is built here.
 
 const PRODUCT_SELECT = `
   id, slug, name, image, badge, featured, category_id, price, original_price,
-  rating, capacity, availability, description, colors, product_code,
+  rating, capacity, availability, description, colors, product_code, sku,
   created_at, updated_at,
   categories ( name ),
   product_images ( id, url, alt_text, sort_order, is_primary, created_at ),
@@ -41,6 +41,7 @@ const PRODUCT_BASE_FIELDS = [
   'description',
   'colors',
   'product_code',
+  'sku',
 ]
 
 // Only copies keys the caller actually provided (partial-safe for
@@ -59,7 +60,7 @@ function pickProductFields(input) {
 
 function throwFriendlyProductWriteError(error) {
   if (error.code === '23505') {
-    throw new Error('A product with this slug or product code already exists.')
+    throw new Error('A product with this slug, product code, or SKU already exists.')
   }
   throw error
 }

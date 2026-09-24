@@ -53,6 +53,7 @@ const ImportTableRow = memo(function ImportTableRow({ row, isExpanded, onToggle 
           <ImageCell product={product} />
         </td>
         <td className="px-4 py-3 font-medium text-slate-900">{product.product_code || '—'}</td>
+        <td className="px-4 py-3 text-slate-500">{product.sku || '—'}</td>
         <td className="px-4 py-3 text-slate-700">{product.name || '—'}</td>
         <td className="px-4 py-3 text-slate-500">{product.category || '—'}</td>
         <td className="px-4 py-3 text-slate-900">{formatInr(product.price)}</td>
@@ -65,7 +66,7 @@ const ImportTableRow = memo(function ImportTableRow({ row, isExpanded, onToggle 
       </tr>
       {isExpanded && (
         <tr>
-          <td colSpan={10} className="p-0">
+          <td colSpan={11} className="p-0">
             <ImportRowDetails row={row} />
           </td>
         </tr>
@@ -94,12 +95,13 @@ export function ImportProductsTable({ rows, expandedRowNumbers, onToggleRow }) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="w-full min-w-[900px] text-left text-sm">
+      <table className="w-full min-w-[980px] text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
             <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium">Product Image</th>
             <th className="px-4 py-3 font-medium">Product Code</th>
+            <th className="px-4 py-3 font-medium">SKU</th>
             <th className="px-4 py-3 font-medium">Product Name</th>
             <th className="px-4 py-3 font-medium">Category</th>
             <th className="px-4 py-3 font-medium">Price</th>

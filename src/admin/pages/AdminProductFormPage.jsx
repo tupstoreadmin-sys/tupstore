@@ -70,6 +70,7 @@ function validateMainImage(file) {
 const EMPTY_FORM = {
   name: '',
   productCode: '',
+  sku: '',
   categoryId: '',
   description: '',
   price: '',
@@ -125,6 +126,7 @@ function buildProductRow(form) {
   return {
     name: form.name.trim(),
     product_code: form.productCode.trim() || null,
+    sku: form.sku.trim() || null,
     category_id: form.categoryId,
     description: form.description.trim() || null,
     price: Number(form.price),
@@ -207,6 +209,7 @@ export default function AdminProductFormPage() {
           setForm({
             name: product.name ?? '',
             productCode: product.product_code ?? '',
+            sku: product.sku ?? '',
             categoryId: product.category_id ?? '',
             description: product.description ?? '',
             price: product.price != null ? String(product.price) : '',
@@ -434,6 +437,21 @@ export default function AdminProductFormPage() {
               placeholder="Optional"
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              SKU
+            </label>
+            <input
+              type="text"
+              value={form.sku}
+              onChange={setField('sku')}
+              disabled={submitting}
+              placeholder="Optional"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
+            />
+            <p className="mt-1 text-xs text-slate-400">Unique stock keeping unit</p>
           </div>
 
           <div>

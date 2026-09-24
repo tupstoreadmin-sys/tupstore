@@ -52,7 +52,7 @@ function groupByKey(rows, keyFn) {
  * @param {object} parsed - the object returned by parseProductImportWorkbook()
  * @param {object} reference
  * @param {{id: string, name: string, slug: string}[]} reference.categories
- * @param {{id: string, slug: string, product_code: string|null}[]} reference.existingProducts
+ * @param {{id: string, slug: string, product_code: string|null, sku: string|null}[]} reference.existingProducts
  */
 export function validateProductImport(parsed, { categories, existingProducts }) {
   const errors = []
@@ -62,6 +62,12 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
   const existingProductCodes = new Set(
     existingProducts
       .map((p) => p.product_code)
+      .filter(Boolean)
+      .map(normalizedKey)
+  )
+  const existingSkus = new Set(
+    existingProducts
+      .map((p) => p.sku)
       .filter(Boolean)
       .map(normalizedKey)
   )
@@ -75,6 +81,10 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
   const productCodeGroups = groupByKey(
     parsed.products.filter((p) => p.product_code),
     (p) => normalizedKey(p.product_code)
+  )
+  const skuGroups = groupByKey(
+    parsed.products.filter((p) => p.sku),
+    (p) => normalizedKey(p.sku)
   )
   const slugGroups = groupByKey(
     parsed.products.filter((p) => p.name),
@@ -95,6 +105,19 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
           ...ctx,
           severity: 'error',
           message: 'Existing product code — import mode not implemented yet.',
+        })
+      }
+    }
+
+    if (product.sku) {
+      if (skuGroups.get(normalizedKey(product.sku)).length > 1) {
+        addFinding(errors, { ...ctx, severity: 'error', message: 'Duplicate SKU in this file' })
+      }
+      if (existingSkus.has(normalizedKey(product.sku))) {
+        addFinding(errors, {
+          ...ctx,
+          severity: 'error',
+          message: 'A product with this SKU already exists',
         })
       }
     }

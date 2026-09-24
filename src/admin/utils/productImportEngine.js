@@ -85,14 +85,14 @@ function resolveCategoryId(categoryText, categoryLookup) {
 }
 
 // The exact string adminProductApi.js's createAdminProduct() throws for a
-// Postgres 23505 (unique violation) on products.slug or
-// products.product_code — that function deliberately re-throws a friendly
+// Postgres 23505 (unique violation) on products.slug, products.product_code,
+// or products.sku — that function deliberately re-throws a friendly
 // message-only Error rather than exposing the raw Postgres code, so this
 // is the only reliable way to detect "this was actually a duplicate-key
 // race" from here without changing that already-approved file. See
 // "Duplicate Import Protection" in this step's task — a race that lands
 // here must be reported as EXISTS/SKIPPED, never a generic FAILED.
-const EXISTING_PRODUCT_RACE_MESSAGE = 'A product with this slug or product code already exists.'
+const EXISTING_PRODUCT_RACE_MESSAGE = 'A product with this slug, product code, or SKU already exists.'
 
 /**
  * Preflight — re-validates the ENTIRE workbook against a freshly-fetched
@@ -221,6 +221,7 @@ async function importOneProduct(row, { categoryLookup, imageAssetsByFilename, on
         slug: slugify(product.name),
         name: product.name,
         product_code: product.product_code,
+        sku: product.sku || null,
         category_id: categoryId,
         price: product.price,
         original_price: product.original_price ?? null,
