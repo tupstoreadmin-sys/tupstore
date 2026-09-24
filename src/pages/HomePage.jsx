@@ -4,6 +4,7 @@ import { useAsync } from '../hooks/useAsync'
 import { productRepository } from '../services/products'
 import { socialVideosRepository } from '../services/socialVideos'
 import { promotionsRepository } from '../services/promotions'
+import { heroRepository } from '../services/hero'
 import { STORE_WHATSAPP_NUMBER } from '../utils/whatsapp'
 import { Container, Section, SectionHeader } from '../components/layout'
 import { Spinner } from '../components/ui'
@@ -17,16 +18,20 @@ import {
   TrustedDestination,
   SpecialistCTA,
 } from '../features/home'
-import { MOCK_HERO_SLIDES, MOCK_WHY_US, MOCK_TESTIMONIALS } from '../data'
+import { MOCK_WHY_US, MOCK_TESTIMONIALS } from '../data'
 
 // Categories come from ProductRepository (real product-catalog data);
 // Reels now come from SocialVideosRepository (see
 // src/services/socialVideos) — real Supabase-backed "Watch Us In Action"
 // content as of Step 3 (db/migrations/0008_social_videos.sql +
-// 0009/0010's Storage policies). hero/promotions/why-us/testimonials still
-// have no repository — no backend covers that marketing content, so it's
-// still read directly from src/data, same as every feature-component demo
-// so far.
+// 0009/0010's Storage policies). Hero now comes from HeroRepository (see
+// src/services/hero) — real Supabase-backed content as of
+// db/migrations/0019_admin_hero_slides.sql/0020_hero_slide_storage.sql,
+// replacing the previous MOCK_HERO_SLIDES import (still used by
+// MockHeroRepository itself, so `VITE_DATA_SOURCE=mock` dev/demo usage is
+// unchanged). promotions/why-us/testimonials still have no repository — no
+// backend covers that marketing content, so it's still read directly from
+// src/data, same as every feature-component demo so far.
 //
 // TRENDING NOW and MUST HAVES are now real rows in the categories table
 // (see db/migrations/0007_trending_must_haves_categories.sql) — official
@@ -107,6 +112,37 @@ function buildDefaultPromotionWhatsappMessage(promotion) {
   return `Hi, I am interested in the ${promotion.title} offer (${productNames.join(', ')}).`
 }
 
+// Turns a HeroRepository CTA (see services/hero/HeroRepository.js's own
+// typedef — {label, type, href?}) into the {label, onClick} shape
+// HeroBanner.jsx already expects, exactly reproducing this page's previous
+// hardcoded behavior: `category`/`product` hrefs are pre-resolved,
+// same-origin routes (`/shop?category=...`, `/product/:slug`) — real
+// in-app navigation via `navigate()`, matching how every other card/link
+// on this page already navigates. `whatsapp` always opens the site-wide
+// STORE_WHATSAPP_NUMBER, matching the previous secondaryCta's own hardcoded
+// behavior exactly — never a per-slide number. `url` opens `navigate()` for
+// a relative path (e.g. the previous mock content's own '/shop' — genuine
+// in-app navigation, not a new tab) or `window.open` for a real external
+// URL, so an admin-entered external link behaves like a normal external
+// link while an internal path keeps working exactly as it always has.
+// Returns undefined (button omitted) when the CTA has no resolvable
+// destination — never a guessed fallback destination.
+function buildHeroCta(cta, navigate) {
+  if (!cta) return undefined
+  if (cta.type === 'whatsapp') {
+    return {
+      label: cta.label,
+      onClick: () =>
+        window.open(`https://wa.me/${STORE_WHATSAPP_NUMBER}`, '_blank', 'noopener'),
+    }
+  }
+  if (!cta.href) return undefined
+  if (cta.type === 'url' && !cta.href.startsWith('/')) {
+    return { label: cta.label, onClick: () => window.open(cta.href, '_blank', 'noopener') }
+  }
+  return { label: cta.label, onClick: () => navigate(cta.href) }
+}
+
 export default function HomePage() {
   const navigate = useNavigate()
 
@@ -115,6 +151,11 @@ export default function HomePage() {
     description:
       'Browse genuine Tupperware kitchen storage, bottles, lunch boxes, thermal flasks and home essentials from an official Tupperware exclusive store in Kerala. Send direct WhatsApp enquiries.',
   })
+
+  const { data: heroSlides, loading: heroLoading } = useAsync(
+    () => heroRepository.getActiveHeroSlides(),
+    []
+  )
 
   const { data: categories, loading: categoriesLoading } = useAsync(
     () => productRepository.getCategories(),
@@ -141,24 +182,27 @@ export default function HomePage() {
 
   return (
     <>
-      <HeroCarousel
-        slides={MOCK_HERO_SLIDES.map((slide) => ({
-          ...slide,
-          primaryCta: {
-            ...slide.primaryCta,
-            onClick: () => navigate(slide.primaryCta.href),
-          },
-          secondaryCta: {
-            ...slide.secondaryCta,
-            onClick: () =>
-              window.open(
-                `https://wa.me/${STORE_WHATSAPP_NUMBER}`,
-                '_blank',
-                'noopener'
-              ),
-          },
-        }))}
-      />
+      {heroLoading ? (
+        // Same min-height as HeroCarousel's own outer div (see
+        // HeroCarousel.jsx) — reserves the exact same space while loading
+        // so nothing shifts once the real slides arrive, matching this
+        // task's "no visible layout jumping" requirement. HeroCarousel
+        // itself renders nothing (returns null) for zero slides, so an
+        // empty result after loading is a deliberate empty state, not a
+        // bug — see db/migrations/0021_seed_initial_hero_slides.sql for
+        // why production should never actually reach that state.
+        <div className="flex min-h-[460px] items-center justify-center bg-surface-subtle md:min-h-[580px]">
+          <Spinner className="h-10 w-10" />
+        </div>
+      ) : (
+        <HeroCarousel
+          slides={(heroSlides ?? []).map((slide) => ({
+            ...slide,
+            primaryCta: buildHeroCta(slide.primaryCta, navigate),
+            secondaryCta: buildHeroCta(slide.secondaryCta, navigate),
+          }))}
+        />
+      )}
 
       <Section>
         <Container>

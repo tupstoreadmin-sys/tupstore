@@ -8,7 +8,8 @@ import { IconWhatsApp } from '../../components/layout/icons'
 
 /**
  * @param {object} props
- * @param {{tag?:string, title:string, image?:string,
+ * @param {{tag?:string, title:string, image?:string, mobileImage?:string,
+ *   altText?:string,
  *   primaryCta?:{label:string, onClick?:Function},
  *   secondaryCta?:{label:string, onClick?:Function},
  *   trustBadges?:string[]}} props.slide
@@ -20,10 +21,22 @@ export function HeroBanner({ slide, isActive = true, className }) {
     tag,
     title,
     image,
+    mobileImage,
+    altText,
     primaryCta,
     secondaryCta,
     trustBadges = [],
   } = slide
+
+  // Same box (absolute inset-0, object-cover) for both — only which `src`
+  // is visible differs by breakpoint, so there is no layout shift and no
+  // change to the existing image treatment. When mobileImage is absent
+  // both render `image`, which is visually identical to the single <img>
+  // this replaces — i.e. the exact current responsive fallback behavior.
+  const heroImageClassName = cn(
+    'absolute inset-0 h-full w-full object-cover object-center transition-transform duration-[7000ms] ease-out',
+    isActive ? 'scale-105' : 'scale-100'
+  )
 
   return (
     <div
@@ -33,14 +46,18 @@ export function HeroBanner({ slide, isActive = true, className }) {
       )}
     >
       {image && (
-        <img
-          src={image}
-          alt=""
-          className={cn(
-            'absolute inset-0 h-full w-full object-cover object-center transition-transform duration-[7000ms] ease-out',
-            isActive ? 'scale-105' : 'scale-100'
-          )}
-        />
+        <>
+          <img
+            src={mobileImage || image}
+            alt={altText || ''}
+            className={cn(heroImageClassName, 'md:hidden')}
+          />
+          <img
+            src={image}
+            alt={altText || ''}
+            className={cn(heroImageClassName, 'hidden md:block')}
+          />
+        </>
       )}
 
       {/* Smooth left-to-right white gradient overlay for ultra-crisp text contrast */}
