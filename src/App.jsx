@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { Header, Footer, MobileMenu, SearchOverlay, ScrollToTop } from './components/layout'
+import {
+  Header,
+  Footer,
+  MobileMenu,
+  MobileBottomNav,
+  SearchOverlay,
+  ScrollToTop,
+} from './components/layout'
 import {
   IconFacebook,
   IconInstagram,
@@ -141,7 +148,7 @@ function AppShell() {
   )
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="mobile-bottom-nav-spacer flex min-h-screen flex-col">
       <ScrollToTop />
       <Header
         logo={
@@ -260,6 +267,16 @@ function AppShell() {
       <FloatingEnquiryButton
         count={enquiry.count}
         onClick={ui.openEnquiryDrawer}
+        className="hidden md:flex"
+      />
+
+      <MobileBottomNav
+        categories={categories}
+        enquiryCount={enquiry.count}
+        onEnquiryClick={ui.openEnquiryDrawer}
+        enquiryDrawerOpen={ui.enquiryDrawerOpen}
+        whatsappUrl={`https://wa.me/${STORE_WHATSAPP_NUMBER}`}
+        onNavigate={navigate}
       />
 
       <EnquiryDrawer

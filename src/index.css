@@ -12,6 +12,29 @@
   }
 }
 
+/* MobileBottomNav.jsx's floating dock: lifted `--mobile-bottom-nav-gap`
+   above the true viewport edge (not flush to it) plus the device's home-
+   indicator safe area. `.mobile-bottom-nav-spacer` reserves matching space
+   below the page's last content (Footer) so the floating bar never covers
+   it. Both hidden/inert at md: (768px) and up, matching the bar's own
+   `md:hidden`. Plain CSS rather than a Tailwind arbitrary value — see
+   tailwind.config.js's header comment on the documented multi-part
+   arbitrary-value bug in this project; env()/calc() combined with a media
+   query has no clean Tailwind-utility equivalent here. */
+@media (max-width: 767.98px) {
+  :root {
+    --mobile-bottom-nav-gap: 12px;
+  }
+  .mobile-bottom-nav-floating {
+    bottom: calc(var(--mobile-bottom-nav-gap) + env(safe-area-inset-bottom));
+  }
+  .mobile-bottom-nav-spacer {
+    padding-bottom: calc(
+      64px + var(--mobile-bottom-nav-gap) + env(safe-area-inset-bottom)
+    );
+  }
+}
+
 @layer base {
   h2 {
     @apply font-bold text-2xl mb-2 md:text-[38px];
