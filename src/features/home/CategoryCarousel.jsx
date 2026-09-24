@@ -73,7 +73,7 @@ export function CategoryCarousel({
   const showArrows = categories.length > 6
 
   const renderArrowControls = () => (
-    <div className="hidden md:flex lg:hidden items-center gap-2 self-start sm:self-end shrink-0">
+    <div className="flex lg:hidden items-center gap-2 self-start sm:self-end shrink-0">
       <button
         type="button"
         aria-label="Previous categories"
@@ -166,14 +166,14 @@ export function CategoryCarousel({
             onClick={() => onSelect?.(category)}
             className="group shrink-0 w-[155px] sm:w-[165px] md:w-[calc((100%-60px)/6)] lg:w-full snap-start overflow-hidden rounded-lg border border-hairline bg-white text-left transition-all duration-fast ease-brand hover:shadow-subtle cursor-pointer"
           >
-            <div className="h-[120px] md:h-[170px] lg:h-auto lg:aspect-[4/5] overflow-hidden bg-surface-subtle">
+            <div className="h-[120px] md:h-[170px] lg:h-auto lg:aspect-[8/9] overflow-hidden bg-surface-subtle">
               <img
                 src={category.image}
                 alt={category.name}
                 className="h-full w-full object-cover transition-transform duration-smooth ease-brand group-hover:scale-105"
               />
             </div>
-            <div className="p-2 md:p-4">
+            <div className="p-2 md:p-4 lg:px-4 lg:py-2">
               <div className="text-[13px] md:text-[13.5px] font-bold text-ink truncate">
                 {category.name}
               </div>
