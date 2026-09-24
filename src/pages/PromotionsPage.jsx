@@ -1,5 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { useSEO } from '../hooks/useSEO'
+import { useAsync } from '../hooks/useAsync'
+import { promotionsRepository } from '../services/promotions'
+import { socialVideosRepository } from '../services/socialVideos'
 import {
   Container,
   Section,
@@ -7,10 +10,40 @@ import {
   Breadcrumb,
   PageBanner,
 } from '../components/layout'
+import { Spinner } from '../components/ui'
 import { PromotionStrip, InstagramReels } from '../features/home'
 import { IconWhatsApp } from '../components/layout/icons'
 import { STORE_WHATSAPP_NUMBER } from '../utils/whatsapp'
-import { MOCK_PROMOTIONS, MOCK_REELS } from '../data'
+
+// Adapts each real Promotion (see promotionsRepository.getActivePromotions())
+// to the plain {id, title, description, image, badge, buttonText,
+// whatsappMessage} shape PromotionStrip.jsx already expects — duplicated
+// from HomePage.jsx's own toFeaturedHighlight()/
+// buildDefaultPromotionWhatsappMessage() rather than imported, matching
+// this project's established "duplicate small pure helpers across pages"
+// convention (see adminPromotionApi.js's own precedent). Never invents
+// copy — every field is read directly from the real row.
+function toFeaturedHighlight(promotion) {
+  return {
+    id: promotion.id,
+    title: promotion.title,
+    description: promotion.description,
+    image: promotion.image,
+    badge: promotion.badge,
+    buttonText: promotion.buttonText,
+    whatsappMessage:
+      promotion.whatsappText || buildDefaultPromotionWhatsappMessage(promotion),
+    products: promotion.products,
+  }
+}
+
+function buildDefaultPromotionWhatsappMessage(promotion) {
+  const productNames = promotion.products.map((p) => p.name)
+  if (productNames.length === 0) {
+    return `Hi, I am interested in the ${promotion.title} offer.`
+  }
+  return `Hi, I am interested in the ${promotion.title} offer (${productNames.join(', ')}).`
+}
 
 export default function PromotionsPage() {
   useSEO({
@@ -20,6 +53,27 @@ export default function PromotionsPage() {
   })
 
   const navigate = useNavigate()
+
+  // Real Supabase data, same repository + useAsync pattern HomePage.jsx
+  // already uses for its own Featured Highlights/Reels sections — see
+  // promotionsRepository.getActivePromotions()/
+  // socialVideosRepository.getPublishedReels(). No mock fallback: the
+  // section is hidden entirely at 0 items (below) rather than ever handing
+  // PromotionStrip an empty array — PromotionStrip.jsx has its own internal
+  // `promotions.length > 0 ? promotions : MOCK_FEATURED_HIGHLIGHTS`
+  // fallback (pre-existing, not modified here), so only ever mounting it
+  // with a non-empty array is what keeps that fallback from ever firing in
+  // production, exactly like HomePage.jsx already relies on.
+  const { data: promotions, loading: featuredLoading } = useAsync(
+    () => promotionsRepository.getActivePromotions(),
+    []
+  )
+  const featuredHighlights = (promotions ?? []).map(toFeaturedHighlight)
+
+  const { data: reels, loading: reelsLoading } = useAsync(
+    () => socialVideosRepository.getPublishedReels(),
+    []
+  )
 
   return (
     <>
@@ -34,29 +88,41 @@ export default function PromotionsPage() {
         ]}
       />
 
-      <Section grey>
-        <Container>
-          <PromotionStrip
-            eyebrow="LIVE FEATURED DEALS"
-            title="Current Exclusive Promotions"
-            description="Enquire directly on WhatsApp to claim special franchise discount pricing and bundled gifts."
-            promotions={MOCK_PROMOTIONS}
-            onSelect={() => navigate('/shop')}
-          />
-        </Container>
-      </Section>
+      {(featuredLoading || featuredHighlights.length > 0) && (
+        <Section grey>
+          <Container>
+            {featuredLoading ? (
+              <Spinner className="h-40 w-full" />
+            ) : (
+              <PromotionStrip
+                eyebrow="LIVE FEATURED DEALS"
+                title="Current Exclusive Promotions"
+                description="Enquire directly on WhatsApp to claim special franchise discount pricing and bundled gifts."
+                promotions={featuredHighlights}
+                onSelect={() => navigate('/shop')}
+              />
+            )}
+          </Container>
+        </Section>
+      )}
 
       {/* Video Spotlight Section */}
-      <Section>
-        <Container>
-          <SectionHeader
-            eyebrow="Video Spotlight"
-            title="See Products in Action"
-            description="Watch quick recipe demonstrations, airtight seal testing, and kitchen makeover videos."
-          />
-          <InstagramReels reels={MOCK_REELS} />
-        </Container>
-      </Section>
+      {(reelsLoading || (reels ?? []).length > 0) && (
+        <Section>
+          <Container>
+            <SectionHeader
+              eyebrow="Video Spotlight"
+              title="See Products in Action"
+              description="Watch quick recipe demonstrations, airtight seal testing, and kitchen makeover videos."
+            />
+            {reelsLoading ? (
+              <Spinner className="h-40 w-full" />
+            ) : (
+              <InstagramReels reels={reels ?? []} />
+            )}
+          </Container>
+        </Section>
+      )}
 
       {/* Franchise Bulk Quote Banner */}
       <Section grey>
