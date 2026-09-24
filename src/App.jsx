@@ -148,12 +148,13 @@ function AppShell() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="font-heading text-2xl md:text-3xl lg:text-[32px] font-black tracking-tight text-ink flex items-baseline gap-0.5 select-none"
+            className="flex items-center select-none"
           >
-            <span>Tupperware</span>
-            <span className="text-[10px] md:text-xs lg:text-[13px] font-bold align-top relative -top-2 md:-top-2.5 lg:-top-3">
-              ®
-            </span>
+            <img
+              src="/logo.webp"
+              alt="The Tupperware Store"
+              className="h-7 w-auto sm:h-8 lg:h-9"
+            />
           </button>
         }
         navLinks={navLinks}
@@ -213,12 +214,13 @@ function AppShell() {
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="font-heading text-2xl md:text-3xl lg:text-[32px] font-black tracking-tight text-ink flex items-baseline gap-0.5 select-none"
+              className="flex items-center select-none"
             >
-              <span>Tupperware</span>
-              <span className="text-[10px] md:text-xs lg:text-[13px] font-bold align-top relative -top-2 md:-top-2.5 lg:-top-3">
-                ®
-              </span>
+              <img
+                src="/logo.webp"
+                alt="The Tupperware Store"
+                className="h-7 w-auto sm:h-8 lg:h-9"
+              />
             </button>
             <p className="mt-3 max-w-[340px] text-[13px] md:text-sm leading-relaxed text-ink-secondary">
               Official Tupperware Exclusive Store Franchise serving customers

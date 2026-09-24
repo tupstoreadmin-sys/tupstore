@@ -68,8 +68,9 @@ export default function AdminLayout() {
               <path d="M2.5 5h15M2.5 10h15M2.5 15h15" strokeLinecap="round" />
             </svg>
           </button>
-          <span className="text-base font-bold tracking-tight">
-            Tupstore Admin
+          <img src="/logo.webp" alt="The Tupperware Store" className="h-6 w-auto sm:h-7" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Admin
           </span>
         </div>
 
