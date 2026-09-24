@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getAdminEnquiries, getAdminEnquiryById } from '../api/adminEnquiryApi'
+import {
+  getAdminEnquiries,
+  getAdminEnquiryById,
+  deleteEnquiry,
+} from '../api/adminEnquiryApi'
 import { AdminEnquiryDetailModal } from '../components/AdminEnquiryDetailModal'
 import { AdminBackLink } from '../components/AdminBackLink'
 
@@ -54,6 +58,7 @@ export default function AdminEnquiriesPage() {
   const [search, setSearch] = useState('')
   const [detailModal, setDetailModal] = useState(null) // null | { loading: true } | { enquiry }
   const [banner, setBanner] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -128,6 +133,33 @@ export default function AdminEnquiriesPage() {
     setDetailModal((m) =>
       m?.enquiry ? { enquiry: { ...m.enquiry, status: updated.status } } : m
     )
+  }
+
+  // search/statusFilter are untouched here, so the current search/filter
+  // state is naturally preserved across a delete — no explicit
+  // preservation logic needed.
+  const handleDelete = async (enquiry) => {
+    if (!window.confirm('Delete this enquiry? This action cannot be undone.')) {
+      return
+    }
+    setDeletingId(enquiry.id)
+    setBanner(null)
+    try {
+      await deleteEnquiry(enquiry.id)
+      setState((s) => ({
+        ...s,
+        items: s.items.filter((e) => e.id !== enquiry.id),
+      }))
+      // Close the detail modal too, if it happened to be open on the
+      // enquiry just deleted — matches AdminPromotionsPage/AdminHeroPage's
+      // own delete-from-list convention.
+      setDetailModal((m) => (m?.enquiry?.id === enquiry.id ? null : m))
+      setBanner({ type: 'success', text: 'Enquiry deleted.' })
+    } catch (error) {
+      setBanner({ type: 'error', text: error.message })
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   return (
@@ -281,13 +313,23 @@ export default function AdminEnquiriesPage() {
                     {formatDateTime(enquiry.created_at)}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenDetail(enquiry)}
-                      className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      View
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDetail(enquiry)}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(enquiry)}
+                        disabled={deletingId === enquiry.id}
+                        className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {deletingId === enquiry.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

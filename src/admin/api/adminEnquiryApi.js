@@ -10,9 +10,7 @@ import { supabase } from '../../lib/supabase'
 // is used or referenced anywhere in this file.
 //
 // Only fields that already exist on enquiries/enquiry_items (db/schema.sql)
-// are used — nothing here invents a column. This file never inserts or
-// deletes an enquiry: admins only view and change status, matching this
-// task's own scope.
+// are used — nothing here invents a column.
 
 const ADMIN_ENQUIRY_SELECT = `
   id, customer_name, customer_phone, customer_email, customer_message,
@@ -42,7 +40,7 @@ export async function getAdminEnquiryById(enquiryId) {
     .from('enquiries')
     .select(
       `id, customer_name, customer_phone, customer_email, customer_message, status, created_at,
-       enquiry_items ( id, quantity, selected_color, price_at_enquiry, products ( id, name, image, slug ) )`
+       enquiry_items ( id, quantity, selected_color, price_at_enquiry, products ( id, name, image, slug, product_code ) )`
     )
     .eq('id', enquiryId)
     .maybeSingle()
@@ -50,12 +48,12 @@ export async function getAdminEnquiryById(enquiryId) {
   return data
 }
 
-// The only write this file performs. `status` must be one of the three
-// values enquiries.status's own check constraint already allows
-// ('new' | 'contacted' | 'closed') — this function does not validate that
-// itself, trusting the database constraint as the single source of truth,
-// matching this project's existing convention of not re-implementing a
-// check the database already enforces (e.g. products.availability).
+// `status` must be one of the three values enquiries.status's own check
+// constraint already allows ('new' | 'contacted' | 'closed') — this
+// function does not validate that itself, trusting the database constraint
+// as the single source of truth, matching this project's existing
+// convention of not re-implementing a check the database already enforces
+// (e.g. products.availability).
 export async function updateEnquiryStatus(enquiryId, status) {
   const { data, error } = await supabase
     .from('enquiries')
@@ -67,4 +65,16 @@ export async function updateEnquiryStatus(enquiryId, status) {
     .single()
   if (error) throw error
   return data
+}
+
+// enquiry_items references enquiry_id on delete cascade (db/schema.sql),
+// so its rows disappear automatically — no manual child-table cleanup
+// needed here, same reasoning as deletePromotion()/deleteHeroSlide().
+// Requires db/migrations/0022_admin_enquiry_delete.sql's DELETE
+// policy/grant on enquiries; fails with a Postgres permission error until
+// that migration is applied, handled by the calling page like every other
+// admin write in this project.
+export async function deleteEnquiry(enquiryId) {
+  const { error } = await supabase.from('enquiries').delete().eq('id', enquiryId)
+  if (error) throw error
 }

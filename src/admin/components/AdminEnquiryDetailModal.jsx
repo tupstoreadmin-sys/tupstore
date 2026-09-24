@@ -141,29 +141,75 @@ export function AdminEnquiryDetailModal({ enquiry, onStatusChange, onClose }) {
 
             {items.length > 0 && (
               <div className="flex flex-col gap-2">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 rounded-md border border-slate-200 p-2"
-                  >
-                    <img
-                      src={item.products?.image}
-                      alt=""
-                      className="h-10 w-10 shrink-0 rounded-md border border-slate-200 object-cover"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-900">
-                        {item.products?.name || 'Product no longer available'}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Qty {item.quantity}
-                        {item.selected_color && ` · ${item.selected_color}`}
-                        {formatInr(item.price_at_enquiry) &&
-                          ` · ${formatInr(item.price_at_enquiry)} each`}
-                      </p>
+                {items.map((item) => {
+                  const product = item.products
+                  const details = (
+                    <p className="text-xs text-slate-500">
+                      Qty {item.quantity}
+                      {item.selected_color && ` · ${item.selected_color}`}
+                      {formatInr(item.price_at_enquiry) &&
+                        ` · ${formatInr(item.price_at_enquiry)} each`}
+                    </p>
+                  )
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-md border border-slate-200 p-2"
+                    >
+                      {product ? (
+                        // Links to the existing Admin Product Edit route
+                        // (/admin/products/:productId/edit), by the real
+                        // product_id already embedded via the
+                        // enquiry_items -> products FK (see
+                        // adminEnquiryApi.js) — never matched by name.
+                        // `contents` keeps the <a> out of the flex layout
+                        // entirely, so wrapping it changes nothing about
+                        // spacing/sizing — only adds the click target.
+                        // target="_blank" so the original modal/tab stays
+                        // open, per this task's own requirement.
+                        <a
+                          href={`/admin/products/${product.id}/edit`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="contents"
+                        >
+                          <img
+                            src={product.image}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded-md border border-slate-200 object-cover"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-slate-900 hover:text-slate-600 hover:underline">
+                              {product.name}
+                              <span
+                                aria-hidden="true"
+                                className="ml-1 text-xs text-slate-400"
+                              >
+                                ↗
+                              </span>
+                            </p>
+                            {details}
+                            {product.product_code && (
+                              <p className="mt-0.5 text-[11px] text-slate-400">
+                                Product Code: {product.product_code}
+                              </p>
+                            )}
+                          </div>
+                        </a>
+                      ) : (
+                        <>
+                          <div className="h-10 w-10 shrink-0 rounded-md border border-slate-200 bg-slate-100" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-slate-400">
+                              Product unavailable
+                            </p>
+                            {details}
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
