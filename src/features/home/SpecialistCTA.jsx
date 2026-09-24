@@ -112,8 +112,8 @@ export function SpecialistCTA({ onChatWhatsApp, onCallStore, className }) {
 
         <div className="overflow-hidden rounded-lg">
           <img
-            src="/images/hero_kitchen.png"
-            alt="Kitchen with Tupperware products"
+            src="/images/specialist_cta.jpg"
+            alt="Meal-prepped Tupperware containers with fresh fruit and vegetables"
             className="h-full w-full object-cover"
           />
         </div>
