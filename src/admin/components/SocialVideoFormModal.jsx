@@ -98,17 +98,26 @@ export function SocialVideoFormModal({ mode, initialValues, onSubmit, onClose })
     [taggedProductIds, productsById]
   )
 
+  // Empty query intentionally yields no results — the picker only shows
+  // matches once the admin starts typing, never the full product list.
   const availableProducts = useMemo(() => {
     const query = productSearch.trim().toLowerCase()
+    if (!query) return []
     return allProducts.filter((p) => {
       if (taggedProductIds.includes(p.id)) return false
-      if (query && !p.name.toLowerCase().includes(query)) return false
-      return true
+      return [p.name, p.sku, p.product_code].some(
+        (field) => field && field.toLowerCase().includes(query)
+      )
     })
   }, [allProducts, taggedProductIds, productSearch])
 
   const handleAddProduct = (productId) => {
-    setTaggedProductIds((ids) => [...ids, productId])
+    // Belt-and-braces duplicate guard — availableProducts already excludes
+    // tagged ids so the Add button for one is never shown, but this keeps
+    // taggedProductIds itself safe against duplicates regardless.
+    setTaggedProductIds((ids) =>
+      ids.includes(productId) ? ids : [...ids, productId]
+    )
   }
 
   const handleRemoveProduct = (productId) => {
@@ -352,48 +361,62 @@ export function SocialVideoFormModal({ mode, initialValues, onSubmit, onClose })
 
             {productsStatus === 'ready' && (
               <>
-                <input
-                  type="text"
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Search products to tag…"
-                  disabled={submitting}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
-                />
-                <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-slate-200">
-                  {availableProducts.length === 0 && (
-                    <p className="px-3 py-3 text-xs text-slate-400">
-                      {allProducts.length === 0
-                        ? 'No products available.'
-                        : 'No matching products.'}
-                    </p>
-                  )}
-                  {availableProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex items-center gap-3 border-b border-slate-100 p-2 last:border-0"
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    placeholder="Search products to tag…"
+                    disabled={submitting}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 pr-8 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
+                  />
+                  {productSearch && (
+                    <button
+                      type="button"
+                      aria-label="Clear search"
+                      onClick={() => setProductSearch('')}
+                      disabled={submitting}
+                      className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
                     >
-                      <img
-                        src={product.image}
-                        alt=""
-                        className="h-8 w-8 shrink-0 rounded-md border border-slate-200 object-cover"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-slate-800">
-                          {product.name}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAddProduct(product.id)}
-                        disabled={submitting}
-                        className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ))}
+                      ×
+                    </button>
+                  )}
                 </div>
+
+                {productSearch.trim() && (
+                  <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-slate-200">
+                    {availableProducts.length === 0 && (
+                      <p className="px-3 py-3 text-xs text-slate-400">
+                        No products found.
+                      </p>
+                    )}
+                    {availableProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="flex items-center gap-3 border-b border-slate-100 p-2 last:border-0"
+                      >
+                        <img
+                          src={product.image}
+                          alt=""
+                          className="h-8 w-8 shrink-0 rounded-md border border-slate-200 object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm text-slate-800">
+                            {product.name}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddProduct(product.id)}
+                          disabled={submitting}
+                          className="shrink-0 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>

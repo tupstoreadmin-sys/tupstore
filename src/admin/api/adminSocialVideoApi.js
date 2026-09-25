@@ -180,7 +180,7 @@ export async function uploadSocialVideo(file) {
 export async function getProductsForTagging() {
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, image, price')
+    .select('id, name, image, price, sku, product_code')
     .order('name', { ascending: true })
   if (error) throw error
   return data ?? []
