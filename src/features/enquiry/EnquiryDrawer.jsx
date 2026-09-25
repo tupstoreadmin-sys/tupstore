@@ -132,9 +132,12 @@ export function EnquiryDrawer({
         </div>
 
         {step === 'cart' && items.length > 0 && (
-          <div className="border-t border-hairline bg-surface-subtle p-6">
+          <div className="flex flex-col gap-3 border-t border-hairline bg-surface-subtle p-6">
+            <Button variant="secondary" fullWidth onClick={onClose}>
+              Continue Shopping
+            </Button>
             <Button variant="wa" fullWidth onClick={() => setStep('details')}>
-              Continue
+              Proceed to Enquiry
             </Button>
           </div>
         )}
