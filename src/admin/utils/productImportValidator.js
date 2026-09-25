@@ -21,6 +21,12 @@ function slugify(value) {
 // Same three values as AdminProductFormPage.jsx's AVAILABILITY_OPTIONS.
 const VALID_AVAILABILITY = ['in_stock', 'out_of_stock', 'preorder']
 
+// Same two named values as AdminProductFormPage.jsx's BADGE_OPTIONS (the
+// third option there, '', is "no badge" — represented here as simply not
+// being in this list, matching the blank-is-allowed check below rather
+// than a literal '' entry).
+const VALID_BADGES = ['Best Seller', 'New Arrival']
+
 function normalizedKey(value) {
   return (value ?? '').trim().toLowerCase()
 }
@@ -155,8 +161,13 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
       addFinding(errors, { ...ctx, severity: 'error', message: 'Missing price' })
     } else if (Number.isNaN(product.price)) {
       addFinding(errors, { ...ctx, severity: 'error', message: 'Price is not a valid number' })
-    } else if (product.price < 0) {
-      addFinding(errors, { ...ctx, severity: 'error', message: 'Price cannot be negative' })
+    } else if (product.price <= 0) {
+      // Stricter than the DB's own `price >= 0` check (db/schema.sql) —
+      // deliberately so: a real catalogue price of 0 is virtually always a
+      // blank/placeholder cell coerced to a number, never an intentional
+      // "free" product, and nothing else in the pipeline would otherwise
+      // catch it (see docs/product-import readiness audit).
+      addFinding(errors, { ...ctx, severity: 'error', message: 'Price must be greater than 0.' })
     }
 
     if (product.original_price !== undefined) {
@@ -190,6 +201,20 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
         ...ctx,
         severity: 'error',
         message: `Invalid availability: "${product.availability}"`,
+      })
+    }
+
+    // Same case-sensitive exact-match convention as VALID_AVAILABILITY
+    // above (product.badge is already trimmed by normalizeString() in
+    // productImportParser.js) — a blank badge is allowed (no badge), but a
+    // non-blank value must match one of the two canonical strings exactly.
+    // Never silently coerced/lowercased into a valid value — a near-miss
+    // like "Best seller" is rejected, not corrected.
+    if (product.badge && !VALID_BADGES.includes(product.badge)) {
+      addFinding(errors, {
+        ...ctx,
+        severity: 'error',
+        message: 'Badge must be Best Seller, New Arrival, or blank.',
       })
     }
 
