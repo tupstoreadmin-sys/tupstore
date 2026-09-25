@@ -9,8 +9,9 @@ import { Input, Textarea, Button } from '../../components/ui'
 // exactly like ProductInfo.jsx already owns local qty/color state.
 
 const MIN_PHONE_DIGITS = 10
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function validate({ customerName, customerPhone }) {
+function validate({ customerName, customerPhone, customerEmail }) {
   const errors = {}
   if (!customerName.trim()) errors.customerName = 'Name is required.'
 
@@ -19,6 +20,12 @@ function validate({ customerName, customerPhone }) {
     errors.customerPhone = 'Phone number is required.'
   } else if (digitCount < MIN_PHONE_DIGITS) {
     errors.customerPhone = 'Enter a valid phone number.'
+  }
+
+  // Optional — only validated when the customer actually provides one.
+  const trimmedEmail = customerEmail.trim()
+  if (trimmedEmail && !EMAIL_PATTERN.test(trimmedEmail)) {
+    errors.customerEmail = 'Please enter a valid email address.'
   }
 
   return errors
@@ -85,6 +92,7 @@ export function EnquiryCustomerForm({
         label="Email Address"
         value={customerEmail}
         onChange={(e) => setCustomerEmail(e.target.value)}
+        error={fieldErrors.customerEmail}
         placeholder="e.g. anjali@example.com"
         disabled={submitting}
       />

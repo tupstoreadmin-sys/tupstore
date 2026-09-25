@@ -37,7 +37,12 @@ export function useSubmitEnquiry() {
       clearItems()
       return { ...outcome, whatsappOpened: Boolean(opened) }
     } catch (err) {
-      setError(err.message)
+      // Never surface a raw Supabase/Postgres error to the customer (table
+      // names, RLS/permission messages, etc.) — the real message still goes
+      // to the console for debugging, exactly like every other api/*.js
+      // failure path already logs via console.error elsewhere in this app.
+      console.error('[useSubmitEnquiry] submit failed:', err.message)
+      setError("We couldn't submit your enquiry right now. Please try again in a moment.")
       throw err
     } finally {
       setSubmitting(false)
