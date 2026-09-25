@@ -7,14 +7,75 @@ function formatInr(amount) {
   return `₹${Number(amount).toLocaleString('en-IN')}`
 }
 
-function validate({ title, buttonText, image, sortOrder }) {
+// Same slugify as AdminProductFormPage.jsx/CategoryFormModal.jsx — kept as
+// its own local copy rather than extracted into a shared util, matching
+// those files' established precedent (no cross-cutting "slug utils" module
+// exists in this admin codebase). Only used on create (see handleSubmit) —
+// an existing promotion's slug is never silently regenerated on edit,
+// exactly like a product's slug isn't.
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+// Both promotion card buttons are fixed, non-editable copy (client
+// decision — see PromotionStrip.jsx, which renders Button 1 from
+// `button_text` and hardcodes Button 2 directly). Button 1's text is still
+// written to the existing `button_text` column on every save so the schema
+// and mapper/API surface don't change; Button 2 has no column at all.
+const PROMOTION_BUTTON_1_TEXT = 'View Offer'
+const PROMOTION_BUTTON_2_TEXT = 'WhatsApp Enquiry'
+
+// `value: ''` for "No Badge" — the submit handler's existing
+// `badge.trim() || null` already turns that into a database NULL. A
+// promotion loaded with some other (legacy) badge value than these five is
+// preserved via the extra option rendered below, never silently reset to
+// "No Badge" or overwritten — same pattern as AdminProductFormPage.jsx's
+// BADGE_OPTIONS.
+const PROMOTION_BADGE_OPTIONS = [
+  { value: '', label: 'No Badge' },
+  { value: 'New Arrival', label: 'New Arrival' },
+  { value: 'Best Seller', label: 'Best Seller' },
+  { value: 'Limited Combo Offer', label: 'Limited Combo Offer' },
+  { value: 'Featured Collection', label: 'Featured Collection' },
+]
+
+// price/originalPrice are optional (blank string = "not set") — only
+// validated *when provided*, matching the task's own "if provided, must be
+// greater than 0" rule. "original > price when both provided" is a
+// blocking validation message here, not a silent correction and not a DB
+// constraint (the migration only enforces each value being > 0 on its own).
+function validate({ title, image, sortOrder, price, originalPrice }) {
   const errors = {}
   if (!title.trim()) errors.title = 'Promotion title is required.'
-  if (!buttonText.trim()) errors.buttonText = 'Button text is required.'
   if (!image) errors.image = 'A promotion image is required.'
   if (sortOrder.trim() !== '' && !Number.isInteger(Number(sortOrder))) {
     errors.sortOrder = 'Sort order must be a whole number.'
   }
+
+  const priceValue = price.trim() === '' ? null : Number(price)
+  if (priceValue != null && !(priceValue > 0)) {
+    errors.price = 'Offer price must be greater than 0.'
+  }
+
+  const originalPriceValue = originalPrice.trim() === '' ? null : Number(originalPrice)
+  if (originalPriceValue != null && !(originalPriceValue > 0)) {
+    errors.originalPrice = 'Original price must be greater than 0.'
+  }
+
+  if (
+    !errors.price &&
+    !errors.originalPrice &&
+    priceValue != null &&
+    originalPriceValue != null &&
+    originalPriceValue <= priceValue
+  ) {
+    errors.originalPrice = 'Original price must be greater than the offer price.'
+  }
+
   return errors
 }
 
@@ -45,8 +106,11 @@ export function PromotionFormModal({ mode, initialValues, onSubmit, onClose }) {
   const [title, setTitle] = useState(initialValues?.title ?? '')
   const [description, setDescription] = useState(initialValues?.description ?? '')
   const [badge, setBadge] = useState(initialValues?.badge ?? '')
-  const [buttonText, setButtonText] = useState(
-    initialValues?.button_text ?? 'View Offer'
+  const [price, setPrice] = useState(
+    initialValues?.price != null ? String(initialValues.price) : ''
+  )
+  const [originalPrice, setOriginalPrice] = useState(
+    initialValues?.original_price != null ? String(initialValues.original_price) : ''
   )
   const [whatsappText, setWhatsappText] = useState(initialValues?.whatsapp_text ?? '')
   const [isActive, setIsActive] = useState(Boolean(initialValues?.is_active))
@@ -134,7 +198,7 @@ export function PromotionFormModal({ mode, initialValues, onSubmit, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const nextErrors = validate({ title, buttonText, image, sortOrder })
+    const nextErrors = validate({ title, image, sortOrder, price, originalPrice })
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -146,10 +210,20 @@ export function PromotionFormModal({ mode, initialValues, onSubmit, onClose }) {
         description: description.trim() || null,
         image,
         badge: badge.trim() || null,
-        button_text: buttonText.trim(),
+        button_text: PROMOTION_BUTTON_1_TEXT,
+        price: price.trim() === '' ? null : Number(price),
+        original_price: originalPrice.trim() === '' ? null : Number(originalPrice),
         whatsapp_text: whatsappText.trim() || null,
         is_active: isActive,
         sort_order: sortOrder.trim() === '' ? 0 : Number(sortOrder),
+      }
+      // slug is generated once, on create, from the title at that moment —
+      // never included on edit, so an existing promotion's slug (and thus
+      // its /promotion/:slug URL) is never silently regenerated when its
+      // title is later changed. Matches AdminProductFormPage.jsx's exact
+      // same-precedent handling of a product's own slug.
+      if (mode === 'add') {
+        row.slug = slugify(title.trim())
       }
       await onSubmit({ row, taggedProductIds })
       // Preserve unsaved form state on failure — do NOT clear/reset any
@@ -210,30 +284,77 @@ export function PromotionFormModal({ mode, initialValues, onSubmit, onClose }) {
               <label className="mb-1 block text-xs font-medium text-slate-600">
                 Badge
               </label>
-              <input
-                type="text"
+              <select
                 value={badge}
                 onChange={(e) => setBadge(e.target.value)}
                 disabled={submitting}
-                placeholder="e.g. LIMITED OFFER, BEST VALUE, NEW"
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
-              />
+              >
+                {PROMOTION_BADGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+                {badge &&
+                  !PROMOTION_BADGE_OPTIONS.some((option) => option.value === badge) && (
+                    <option value={badge}>{badge}</option>
+                  )}
+              </select>
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Button Text *
+                Offer Price
               </label>
               <input
                 type="text"
-                value={buttonText}
-                onChange={(e) => setButtonText(e.target.value)}
+                inputMode="decimal"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
                 disabled={submitting}
+                placeholder="Optional"
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
               />
-              {errors.buttonText && (
-                <p className="mt-1 text-xs text-red-600">{errors.buttonText}</p>
+              {errors.price && (
+                <p className="mt-1 text-xs text-red-600">{errors.price}</p>
               )}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Original Price
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={originalPrice}
+                onChange={(e) => setOriginalPrice(e.target.value)}
+                disabled={submitting}
+                placeholder="Optional"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
+              />
+              {errors.originalPrice && (
+                <p className="mt-1 text-xs text-red-600">{errors.originalPrice}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Promotion Buttons
+              </label>
+              <div className="flex flex-col gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500">Button 1</span>
+                  <span className="font-medium text-slate-700">{PROMOTION_BUTTON_1_TEXT}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500">Button 2</span>
+                  <span className="font-medium text-slate-700">{PROMOTION_BUTTON_2_TEXT}</span>
+                </div>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Button text is fixed and cannot be edited.
+              </p>
             </div>
 
             <div className="sm:col-span-2">

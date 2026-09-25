@@ -235,7 +235,7 @@ export function PromotionStrip({
                       className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm transition-all duration-smooth ease-brand hover:bg-[#20ba5a] hover:scale-[1.02] hover:shadow-md active:scale-95"
                     >
                       <IconWhatsApp className="h-4 w-4" />
-                      <span>Enquire Offer on WA</span>
+                      <span>WhatsApp Enquiry</span>
                     </a>
                   </div>
                 </div>

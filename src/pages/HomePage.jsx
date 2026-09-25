@@ -6,6 +6,7 @@ import { socialVideosRepository } from '../services/socialVideos'
 import { promotionsRepository } from '../services/promotions'
 import { heroRepository } from '../services/hero'
 import { STORE_WHATSAPP_NUMBER } from '../utils/whatsapp'
+import { buildDefaultPromotionWhatsappMessage } from '../utils/buildPromotionWhatsappMessage'
 import { Container, Section, SectionHeader } from '../components/layout'
 import { Spinner } from '../components/ui'
 import {
@@ -77,18 +78,17 @@ function withLocalImageOverrides(categories) {
 // image is `not null` (enforced by both the DB constraint and the Admin
 // form), so no fallback is needed or added here.
 //
-// A promotion has no `slug`/detail page of its own (by design — see
-// db/migrations/0012_promotions.sql; no detail page is added in this
-// step). `products` is kept on the mapped object (not read by
-// PromotionStrip itself, which has no knowledge of it) purely so this
-// page's own onSelect/whatsappMessage logic below can inspect the tagged
-// products: exactly one tagged product routes "View Offer" to that
-// product's own real Product Detail page; zero or multiple route to the
-// general Shop catalogue instead, since there is no existing multi-product
-// bundle page to link to and this step must not invent one.
+// A promotion is now an independent combo/offer entity with its own detail
+// page (`/promotion/:slug`, see PromotionDetailPage.jsx) — "View Offer"
+// routes there unconditionally, never to a single tagged product's own
+// Product Detail page (that previous single-tagged-product shortcut is
+// removed; see this page's own onSelect below). `products` is kept on the
+// mapped object purely so buildDefaultPromotionWhatsappMessage() can still
+// list tagged product names in the default WhatsApp message when relevant.
 function toFeaturedHighlight(promotion) {
   return {
     id: promotion.id,
+    slug: promotion.slug,
     title: promotion.title,
     description: promotion.description,
     image: promotion.image,
@@ -97,19 +97,6 @@ function toFeaturedHighlight(promotion) {
     whatsappMessage: promotion.whatsappText || buildDefaultPromotionWhatsappMessage(promotion),
     products: promotion.products,
   }
-}
-
-// Only used when the admin left whatsapp_text blank for this promotion —
-// mirrors the shape of PromotionStrip's own previous hardcoded fallback
-// message (title-only), extended with tagged product names when any exist,
-// per this step's own example ("Hi, I am interested in the Kitchen
-// Organisation Combo."). Never exposes a raw id/uuid.
-function buildDefaultPromotionWhatsappMessage(promotion) {
-  const productNames = promotion.products.map((p) => p.name)
-  if (productNames.length === 0) {
-    return `Hi, I am interested in the ${promotion.title} offer.`
-  }
-  return `Hi, I am interested in the ${promotion.title} offer (${productNames.join(', ')}).`
 }
 
 // Turns a HeroRepository CTA (see services/hero/HeroRepository.js's own
@@ -232,11 +219,7 @@ export default function HomePage() {
                 title="Featured Highlights"
                 description="Ongoing limited combos and curated kit promotions for Kerala customers."
                 promotions={featuredHighlights}
-                onSelect={(promo) => {
-                  const singleProduct =
-                    promo.products?.length === 1 ? promo.products[0] : null
-                  navigate(singleProduct ? `/product/${singleProduct.slug}` : '/shop')
-                }}
+                onSelect={(promo) => navigate(`/promotion/${promo.slug}`)}
               />
             )}
           </Container>

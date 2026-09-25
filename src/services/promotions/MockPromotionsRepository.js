@@ -16,4 +16,10 @@ export class MockPromotionsRepository extends PromotionsRepository {
   async getActivePromotions() {
     return []
   }
+
+  /** @returns {Promise<import('./PromotionsRepository').Promotion | null>} */
+  // eslint-disable-next-line no-unused-vars
+  async getPromotionBySlug(slug) {
+    return null
+  }
 }

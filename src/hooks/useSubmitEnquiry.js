@@ -12,7 +12,7 @@ import { buildWhatsAppUrl } from '../utils/whatsapp'
 // the customer can retry.
 
 export function useSubmitEnquiry() {
-  const { items, clearItems } = useEnquiry()
+  const { items, promotion, clearItems } = useEnquiry()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -25,9 +25,19 @@ export function useSubmitEnquiry() {
     setError(null)
 
     try {
-      const outcome = await createEnquiry({ ...customerDetails, items })
+      const outcome = await createEnquiry({
+        ...customerDetails,
+        items,
+        promotionId: promotion?.id ?? null,
+      })
 
-      const message = buildEnquiryMessage({ items, customerDetails })
+      const message = buildEnquiryMessage({
+        items,
+        customerDetails,
+        promotion: promotion
+          ? { title: promotion.title, price: promotion.price, originalPrice: promotion.originalPrice }
+          : undefined,
+      })
       const opened = window.open(
         buildWhatsAppUrl(message),
         '_blank',

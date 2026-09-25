@@ -29,6 +29,12 @@ import { EnquiryCustomerForm } from './EnquiryCustomerForm'
  * @param {(details: import('../../models/Enquiry').CustomerDetails) => Promise<{id: string|null, persisted: boolean}>} [props.onSubmit]
  * @param {boolean} [props.submitting]
  * @param {string} [props.submitError]
+ * @param {boolean} [props.allowEmptyCart] - true when the enquiry is "about"
+ *   a promotion (see useAddPromotionToEnquiry.js) that may have zero tagged
+ *   products — lets the drawer proceed to submit with 0 items, which it
+ *   otherwise never allows
+ * @param {string} [props.promotionTitle] - shown in place of the generic
+ *   empty-cart message when `allowEmptyCart` is true and there are 0 items
  * @param {string} [props.className]
  */
 export function EnquiryDrawer({
@@ -41,6 +47,8 @@ export function EnquiryDrawer({
   onSubmit,
   submitting = false,
   submitError,
+  allowEmptyCart = false,
+  promotionTitle,
   className,
 }) {
   const [step, setStep] = useState('cart')
@@ -109,6 +117,16 @@ export function EnquiryDrawer({
               submitting={submitting}
               error={submitError}
             />
+          ) : items.length === 0 && allowEmptyCart ? (
+            <EmptyState
+              icon="🎁"
+              title="Ready to enquire about this offer"
+              description={
+                promotionTitle
+                  ? `No individual products selected — you're enquiring about "${promotionTitle}".`
+                  : "You're enquiring about this offer."
+              }
+            />
           ) : items.length === 0 ? (
             <EmptyState
               icon="📝"
@@ -131,7 +149,7 @@ export function EnquiryDrawer({
           )}
         </div>
 
-        {step === 'cart' && items.length > 0 && (
+        {step === 'cart' && (items.length > 0 || allowEmptyCart) && (
           <div className="flex flex-col gap-3 border-t border-hairline bg-surface-subtle p-6">
             <Button variant="secondary" fullWidth onClick={onClose}>
               Continue Shopping

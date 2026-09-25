@@ -128,6 +128,42 @@ export function AdminEnquiryDetailModal({ enquiry, onStatusChange, onClose }) {
             </div>
           )}
 
+          {enquiry.promotions && (
+            <div className="border-t border-slate-200 pt-4">
+              <p className="mb-2 text-xs font-medium text-slate-500">Promotion</p>
+              <p className="text-sm font-medium text-slate-900">
+                {enquiry.promotions.title}
+              </p>
+              {formatInr(enquiry.promotions.price) && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Offer Price: {formatInr(enquiry.promotions.price)}
+                </p>
+              )}
+              {formatInr(enquiry.promotions.original_price) &&
+                enquiry.promotions.original_price > enquiry.promotions.price && (
+                  <p className="text-xs text-slate-500">
+                    Original Price: {formatInr(enquiry.promotions.original_price)}
+                  </p>
+                )}
+
+              {items.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs font-medium text-slate-500">
+                    Included Products ({items.length})
+                  </p>
+                  <ul className="flex flex-col gap-1">
+                    {items.map((item) => (
+                      <li key={item.id} className="text-sm text-slate-700">
+                        {item.products?.name || 'Product unavailable'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!enquiry.promotions && (
           <div className="border-t border-slate-200 pt-4">
             <p className="mb-2 text-xs font-medium text-slate-500">
               Requested Products {items.length > 0 && `(${items.length})`}
@@ -213,6 +249,7 @@ export function AdminEnquiryDetailModal({ enquiry, onStatusChange, onClose }) {
               </div>
             )}
           </div>
+          )}
         </div>
 
         <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 px-6 py-4">

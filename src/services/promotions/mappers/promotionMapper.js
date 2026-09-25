@@ -46,6 +46,9 @@ export function mapPromotion(row) {
     badge: row.badge ?? undefined,
     buttonText: row.button_text,
     whatsappText: row.whatsapp_text ?? undefined,
+    slug: row.slug,
+    price: row.price ?? undefined,
+    originalPrice: row.original_price ?? undefined,
     sortOrder: row.sort_order,
     products: sortByPromotionProductOrder(row.promotion_products ?? [])
       .map(mapPromotionProduct)

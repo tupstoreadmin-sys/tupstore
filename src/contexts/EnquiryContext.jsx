@@ -13,6 +13,15 @@ const EnquiryContext = createContext(null)
  */
 export function EnquiryProvider({ children }) {
   const [items, setItems] = useState([])
+  // The promotion an enquiry is currently "about", if any — at most one at
+  // a time (see useAddPromotionToEnquiry.js/useAddToEnquiry.js, the only
+  // two places that ever call setPromotion). `productIds` is only the
+  // tagged products' ids (not their name/image/price), just enough to tell
+  // "belongs to this promotion" apart from "unrelated product" — not a
+  // duplication of product data. `price`/`originalPrice` are the combo's
+  // own offer pricing, captured once so the enquiry message/drawer can show
+  // it without a second fetch.
+  const [promotion, setPromotion] = useState(null)
 
   const addItem = (product, qty = 1, color) => {
     setItems((current) => {
@@ -58,7 +67,13 @@ export function EnquiryProvider({ children }) {
   const removeItem = (item) =>
     setItems((current) => current.filter((i) => i.id !== item.id))
 
-  const clearItems = () => setItems([])
+  // Resets `promotion` together with `items` — the two always represent one
+  // enquiry's lifecycle together (see useSubmitEnquiry.js, the only caller
+  // after a successful submit).
+  const clearItems = () => {
+    setItems([])
+    setPromotion(null)
+  }
 
   const ids = useMemo(() => items.map((item) => item.id), [items])
   const count = useMemo(
@@ -70,6 +85,8 @@ export function EnquiryProvider({ children }) {
     items,
     ids,
     count,
+    promotion,
+    setPromotion,
     addItem,
     incrementItem,
     decrementItem,

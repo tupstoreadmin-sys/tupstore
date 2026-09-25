@@ -33,6 +33,7 @@ import HomePage from './pages/HomePage'
 import ShopPage from './pages/ShopPage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import PromotionsPage from './pages/PromotionsPage'
+import PromotionDetailPage from './pages/PromotionDetailPage'
 import AboutTupperwarePage from './pages/AboutTupperwarePage'
 import AboutTupstorePage from './pages/AboutTupstorePage'
 import ContactPage from './pages/ContactPage'
@@ -207,6 +208,7 @@ function AppShell() {
             }
           />
           <Route path="/promotions" element={<PromotionsPage />} />
+          <Route path="/promotion/:slug" element={<PromotionDetailPage />} />
           <Route path="/about-tupperware" element={<AboutTupperwarePage />} />
           <Route path="/about-tupstore" element={<AboutTupstorePage />} />
           <Route path="/about-store" element={<AboutTupstorePage />} />
@@ -289,6 +291,8 @@ function AppShell() {
         onSubmit={submitEnquiry}
         submitting={submittingEnquiry}
         submitError={submitEnquiryError}
+        allowEmptyCart={Boolean(enquiry.promotion)}
+        promotionTitle={enquiry.promotion?.title}
       />
 
       <SearchOverlay

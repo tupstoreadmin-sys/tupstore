@@ -16,6 +16,7 @@ import { supabase } from '../../lib/supabase'
 
 const PROMOTION_COLUMNS = `
   id, title, description, image, badge, button_text, whatsapp_text,
+  slug, price, original_price,
   is_active, sort_order, created_at, updated_at
 `
 
@@ -35,6 +36,9 @@ const PROMOTION_BASE_FIELDS = [
   'badge',
   'button_text',
   'whatsapp_text',
+  'slug',
+  'price',
+  'original_price',
   'is_active',
   'sort_order',
 ]
@@ -49,6 +53,19 @@ function pickPromotionFields(input) {
     if (input[key] !== undefined) row[key] = input[key]
   }
   return row
+}
+
+// A duplicate title produces the same slug (see PromotionFormModal.jsx's
+// slugify()) and collides with promotions_slug_key (0024 migration) — this
+// surfaces as a clear message rather than a raw Postgres error, same
+// pattern as adminProductApi.js's throwFriendlyProductWriteError().
+function throwFriendlyPromotionWriteError(error) {
+  if (error.code === '23505') {
+    throw new Error(
+      'A promotion with this title already exists (or produces the same URL). Please use a different title.'
+    )
+  }
+  throw error
 }
 
 // ── Promotions ──────────────────────────────────────────────────────────
@@ -90,7 +107,7 @@ export async function createPromotion(promotionData) {
     .insert(row)
     .select(PROMOTION_SELECT)
     .single()
-  if (error) throw error
+  if (error) throwFriendlyPromotionWriteError(error)
   return data
 }
 
@@ -102,7 +119,7 @@ export async function updatePromotion(promotionId, promotionData) {
     .eq('id', promotionId)
     .select(PROMOTION_SELECT)
     .single()
-  if (error) throw error
+  if (error) throwFriendlyPromotionWriteError(error)
   return data
 }
 

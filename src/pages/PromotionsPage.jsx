@@ -14,18 +14,21 @@ import { Spinner } from '../components/ui'
 import { PromotionStrip, InstagramReels } from '../features/home'
 import { IconWhatsApp } from '../components/layout/icons'
 import { STORE_WHATSAPP_NUMBER } from '../utils/whatsapp'
+import { buildDefaultPromotionWhatsappMessage } from '../utils/buildPromotionWhatsappMessage'
 
 // Adapts each real Promotion (see promotionsRepository.getActivePromotions())
-// to the plain {id, title, description, image, badge, buttonText,
+// to the plain {id, slug, title, description, image, badge, buttonText,
 // whatsappMessage} shape PromotionStrip.jsx already expects — duplicated
-// from HomePage.jsx's own toFeaturedHighlight()/
-// buildDefaultPromotionWhatsappMessage() rather than imported, matching
-// this project's established "duplicate small pure helpers across pages"
-// convention (see adminPromotionApi.js's own precedent). Never invents
-// copy — every field is read directly from the real row.
+// from HomePage.jsx's own toFeaturedHighlight() rather than imported,
+// matching this project's established "duplicate small pure helpers across
+// pages" convention (see adminPromotionApi.js's own precedent). Never
+// invents copy — every field is read directly from the real row.
+// buildDefaultPromotionWhatsappMessage() itself is shared (not duplicated a
+// third time) — see utils/buildPromotionWhatsappMessage.js.
 function toFeaturedHighlight(promotion) {
   return {
     id: promotion.id,
+    slug: promotion.slug,
     title: promotion.title,
     description: promotion.description,
     image: promotion.image,
@@ -35,14 +38,6 @@ function toFeaturedHighlight(promotion) {
       promotion.whatsappText || buildDefaultPromotionWhatsappMessage(promotion),
     products: promotion.products,
   }
-}
-
-function buildDefaultPromotionWhatsappMessage(promotion) {
-  const productNames = promotion.products.map((p) => p.name)
-  if (productNames.length === 0) {
-    return `Hi, I am interested in the ${promotion.title} offer.`
-  }
-  return `Hi, I am interested in the ${promotion.title} offer (${productNames.join(', ')}).`
 }
 
 export default function PromotionsPage() {
@@ -99,7 +94,7 @@ export default function PromotionsPage() {
                 title="Current Exclusive Promotions"
                 description="Enquire directly on WhatsApp to claim special franchise discount pricing and bundled gifts."
                 promotions={featuredHighlights}
-                onSelect={() => navigate('/shop')}
+                onSelect={(promo) => navigate(`/promotion/${promo.slug}`)}
               />
             )}
           </Container>

@@ -16,6 +16,7 @@ async function insertEnquiry({
   customerPhone,
   customerEmail,
   customerMessage,
+  promotionId,
 }) {
   const { error } = await supabase.from('enquiries').insert({
     id,
@@ -23,6 +24,7 @@ async function insertEnquiry({
     customer_phone: customerPhone,
     customer_email: customerEmail || null,
     customer_message: customerMessage || null,
+    promotion_id: promotionId ?? null,
     status: 'new',
   })
 
@@ -69,6 +71,9 @@ async function notifyEnquiryCreated(enquiryId) {
  * @param {string} [params.customerEmail]
  * @param {string} [params.customerMessage]
  * @param {import('../models/Enquiry').EnquiryItem[]} params.items
+ * @param {string} [params.promotionId] - set when this enquiry is "about" a
+ *   promotion (see useAddPromotionToEnquiry.js); null/undefined for every
+ *   ordinary product enquiry, unchanged from today.
  * @returns {Promise<{id: string|null, persisted: boolean}>}
  */
 export async function createEnquiry({
@@ -77,6 +82,7 @@ export async function createEnquiry({
   customerEmail,
   customerMessage,
   items = [],
+  promotionId,
 }) {
   if (import.meta.env.VITE_DATA_SOURCE !== 'supabase') {
     // Mock mode: MockProductRepository's product ids ('p-1', ...) are not
@@ -96,6 +102,7 @@ export async function createEnquiry({
       customerPhone,
       customerEmail,
       customerMessage,
+      promotionId,
     })
   } catch (error) {
     throw new Error(

@@ -15,6 +15,7 @@ import { handleApiError } from '../utils/handleApiError'
 // reads.
 const ACTIVE_PROMOTIONS_SELECT = `
   id, title, description, image, badge, button_text, whatsapp_text,
+  slug, price, original_price,
   is_active, sort_order,
   promotion_products (
     sort_order,
@@ -45,4 +46,24 @@ export async function getActivePromotions() {
 
   handleApiError(error, 'getActivePromotions')
   return data ?? []
+}
+
+/**
+ * One active promotion by its public slug, for the Promotion Detail page
+ * (`/promotion/:slug`). Same RLS-reliant, `anon`-only shape as
+ * getActivePromotions() — `.eq('is_active', true)` means an inactive or
+ * unknown slug returns `null` (via `maybeSingle()`), never a raw Supabase
+ * error, so the page's own "not found" state is the only outcome for a bad
+ * URL.
+ */
+export async function getPromotionBySlug(slug) {
+  const { data, error } = await supabase
+    .from('promotions')
+    .select(ACTIVE_PROMOTIONS_SELECT)
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  handleApiError(error, 'getPromotionBySlug')
+  return data
 }

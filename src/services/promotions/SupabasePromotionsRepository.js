@@ -14,4 +14,10 @@ export class SupabasePromotionsRepository extends PromotionsRepository {
     const rows = await promotionApi.getActivePromotions()
     return (rows ?? []).map(mapPromotion)
   }
+
+  /** @returns {Promise<import('./PromotionsRepository').Promotion | null>} */
+  async getPromotionBySlug(slug) {
+    const row = await promotionApi.getPromotionBySlug(slug)
+    return row ? mapPromotion(row) : null
+  }
 }
