@@ -6,10 +6,28 @@ import {
 import { HeroImageUpload } from './HeroImageUpload'
 import { HeroButtonFields } from './HeroButtonFields'
 
-function validate({ title, image }) {
+function validate({
+  title,
+  image,
+  button1Type,
+  button1Target,
+  button2Type,
+  button2Target,
+}) {
   const errors = {}
   if (!title.trim()) errors.title = 'Title is required.'
   if (!image) errors.image = 'A desktop hero image is required.'
+  // "Go to a category" with nothing picked would otherwise save silently
+  // and the CTA would simply never render on the customer site (see
+  // heroMapper.js's resolveCtaHref/mapCta — a category type with no target
+  // has no resolvable href, so the whole button is omitted) — catch it
+  // here instead of letting that happen invisibly.
+  if (button1Type === 'category' && !button1Target.trim()) {
+    errors.button1Target = 'Please select a category for this button.'
+  }
+  if (button2Type === 'category' && !button2Target.trim()) {
+    errors.button2Target = 'Please select a category for this button.'
+  }
   return errors
 }
 
@@ -113,7 +131,14 @@ export function HeroSlideFormModal({ mode, initialValues, onSubmit, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const nextErrors = validate({ title, image })
+    const nextErrors = validate({
+      title,
+      image,
+      button1Type,
+      button1Target,
+      button2Type,
+      button2Target,
+    })
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -269,6 +294,7 @@ export function HeroSlideFormModal({ mode, initialValues, onSubmit, onClose }) {
                   onTypeChange={setButton1Type}
                   target={button1Target}
                   onTargetChange={setButton1Target}
+                  targetError={errors.button1Target}
                   categories={categories}
                   products={products}
                   disabled={submitting}
@@ -281,6 +307,7 @@ export function HeroSlideFormModal({ mode, initialValues, onSubmit, onClose }) {
                   onTypeChange={setButton2Type}
                   target={button2Target}
                   onTargetChange={setButton2Target}
+                  targetError={errors.button2Target}
                   categories={categories}
                   products={products}
                   disabled={submitting}

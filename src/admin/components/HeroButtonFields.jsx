@@ -21,6 +21,9 @@
 // @param {(v: string) => void} props.onTypeChange
 // @param {string} props.target
 // @param {(v: string) => void} props.onTargetChange
+// @param {string} [props.targetError] - shown under the category/product
+//   picker, e.g. when "Go to a category" is selected but nothing was
+//   picked (see HeroSlideFormModal.jsx's validate())
 // @param {{id:string, name:string}[]} props.categories
 // @param {{id:string, name:string}[]} props.products
 // @param {boolean} [props.disabled]
@@ -32,6 +35,7 @@ export function HeroButtonFields({
   onTypeChange,
   target,
   onTargetChange,
+  targetError,
   categories,
   products,
   disabled,
@@ -101,6 +105,9 @@ export function HeroButtonFields({
                 </option>
               ))}
             </select>
+            {targetError && (
+              <p className="mt-1 text-xs text-red-600">{targetError}</p>
+            )}
           </div>
         )}
 
