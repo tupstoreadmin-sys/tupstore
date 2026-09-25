@@ -10,7 +10,6 @@ import { ProductGrid } from '../shop/ProductGrid'
  * @param {object[]} props.products
  * @param {(string|number)[]} [props.enquiryIds]
  * @param {(product: object) => void} [props.onAddToEnquiry]
- * @param {(product: object) => void} [props.onQuickView]
  * @param {(product: object) => void} [props.onSelect]
  * @param {string} [props.className]
  */
@@ -18,7 +17,6 @@ export function RecentlyViewed({
   products = [],
   enquiryIds,
   onAddToEnquiry,
-  onQuickView,
   onSelect,
   className,
 }) {
@@ -37,7 +35,6 @@ export function RecentlyViewed({
         products={products}
         enquiryIds={enquiryIds}
         onAddToEnquiry={onAddToEnquiry}
-        onQuickView={onQuickView}
         onSelect={onSelect}
       />
     </div>

@@ -8,7 +8,6 @@ import { ProductCard, EmptyState } from '../../components/ui'
  * @param {object[]} props.products
  * @param {(string|number)[]} [props.enquiryIds] - ids currently in the enquiry list
  * @param {(product: object) => void} [props.onAddToEnquiry]
- * @param {(product: object) => void} [props.onQuickView]
  * @param {(product: object) => void} [props.onSelect]
  * @param {'grid'|'list'} [props.layout]
  * @param {string} [props.emptyMessage]
@@ -18,7 +17,6 @@ export function ProductGrid({
   products = [],
   enquiryIds = [],
   onAddToEnquiry,
-  onQuickView,
   onSelect,
   layout = 'grid',
   emptyMessage = 'No products found',
@@ -50,7 +48,6 @@ export function ProductGrid({
           product={product}
           isInEnquiry={enquiryIds.includes(product.id)}
           onAddToEnquiry={onAddToEnquiry}
-          onQuickView={onQuickView}
           onClick={onSelect}
         />
       ))}

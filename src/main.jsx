@@ -24,8 +24,13 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
-        {/* Dev-only route — remove alongside pages/dev/ before production */}
-        <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
+        {/* Dev-only route — gated out of production builds (import.meta.env.DEV
+            is a build-time constant, so Vite drops this branch and the
+            DesignSystemShowcase import from the production bundle entirely).
+            Remove alongside pages/dev/ if this page is no longer needed. */}
+        {import.meta.env.DEV && (
+          <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
+        )}
         {/* Admin — a separate authenticated area, isolated from the
             customer storefront's chrome (Header/Footer/EnquiryDrawer/etc
             live only inside App, never here). See src/admin/AdminApp.jsx. */}

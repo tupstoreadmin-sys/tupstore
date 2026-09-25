@@ -17,7 +17,6 @@ import { ProductRating } from './ProductRating'
  *   price: number, originalPrice?: number, rating: number }} props.product
  * @param {boolean} [props.isInEnquiry]
  * @param {(product: object) => void} [props.onAddToEnquiry]
- * @param {(product: object) => void} [props.onQuickView]
  * @param {(product: object) => void} [props.onClick] - e.g. navigate to detail; caller's decision
  * @param {string} [props.className]
  */
@@ -25,7 +24,6 @@ export function ProductCard({
   product,
   isInEnquiry = false,
   onAddToEnquiry,
-  onQuickView,
   onClick,
   className,
 }) {
@@ -40,11 +38,6 @@ export function ProductCard({
     if (onClick) {
       onClick(product)
     }
-  }
-
-  const handleQuickViewClick = (e) => {
-    e.stopPropagation()
-    onQuickView?.(product)
   }
 
   const handleAddToEnquiryClick = (e) => {
@@ -80,33 +73,6 @@ export function ProductCard({
             {badge}
           </Badge>
         )}
-
-        {/* Quick-view button — top right over image */}
-        <button
-          type="button"
-          aria-label={`Quick view ${name}`}
-          onClick={handleQuickViewClick}
-          className={cn(
-            'absolute right-2 top-2 sm:right-2.5 sm:top-2.5 z-[15] flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full',
-            'bg-badge-translucent text-ink backdrop-blur-sm transition-all duration-fast ease-brand',
-            'opacity-0 group-hover:opacity-100 md:opacity-0',
-            'max-md:opacity-100',
-            'hover:bg-ink hover:text-white'
-          )}
-        >
-          <svg
-            className="h-3.5 w-3.5 sm:h-4 sm:w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        </button>
 
         {/* Mobile-only circular enquiry cart icon button (bottom right over image) */}
         <button

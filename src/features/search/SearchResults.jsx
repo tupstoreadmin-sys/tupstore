@@ -11,7 +11,6 @@ import { ProductCard, EmptyState } from '../../components/ui'
  * @param {string} [props.query]
  * @param {(string|number)[]} [props.enquiryIds]
  * @param {(product: object) => void} [props.onAddToEnquiry]
- * @param {(product: object) => void} [props.onQuickView]
  * @param {(product: object) => void} [props.onSelect]
  * @param {string} [props.className]
  */
@@ -20,7 +19,6 @@ export function SearchResults({
   query = '',
   enquiryIds = [],
   onAddToEnquiry,
-  onQuickView,
   onSelect,
   className,
 }) {
@@ -47,7 +45,6 @@ export function SearchResults({
           product={product}
           isInEnquiry={enquiryIds.includes(product.id)}
           onAddToEnquiry={onAddToEnquiry}
-          onQuickView={onQuickView}
           onClick={onSelect}
         />
       ))}

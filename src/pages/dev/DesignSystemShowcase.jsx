@@ -285,7 +285,6 @@ export default function DesignSystemShowcase() {
               product={SAMPLE_PRODUCT}
               isInEnquiry={inEnquiry}
               onAddToEnquiry={() => setInEnquiry((v) => !v)}
-              onQuickView={(p) => console.log('quick view', p)}
               onClick={(p) => console.log('card click', p)}
             />
           </div>
