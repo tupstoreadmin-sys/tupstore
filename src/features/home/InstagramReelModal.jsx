@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '../../utils/cn'
 import {
   IconClose,
@@ -11,6 +12,7 @@ import {
   IconExternalLink,
 } from '../../components/layout/icons'
 import { useAddToEnquiry } from '../../hooks/useAddToEnquiry'
+import { ProductQuickViewModal } from './ProductQuickViewModal'
 
 /**
  * @param {object} props
@@ -30,7 +32,9 @@ export function InstagramReelModal({
   const [isPlaying, setIsPlaying] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [quickViewProduct, setQuickViewProduct] = useState(null)
   const videoRef = useRef(null)
+  const navigate = useNavigate()
 
   const addToEnquiry = useAddToEnquiry()
 
@@ -38,6 +42,7 @@ export function InstagramReelModal({
     setIsPlaying(false)
     setIsShareOpen(false)
     setCopied(false)
+    setQuickViewProduct(null)
   }
 
   // Prevent background scrolling while modal is open & add keyboard controls
@@ -47,7 +52,20 @@ export function InstagramReelModal({
     document.body.style.overflow = 'hidden'
 
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose?.()
+      if (e.key === 'Escape') {
+        // Quick View is a secondary modal layered on top — Escape closes
+        // it first and leaves the Reel modal open, matching how it closes
+        // via its own backdrop click/close button.
+        if (quickViewProduct) {
+          setQuickViewProduct(null)
+        } else {
+          onClose?.()
+        }
+        return
+      }
+      // Reel navigation is intentionally disabled while Quick View is open
+      // so it can't change the tagged products out from under it.
+      if (quickViewProduct) return
       if (e.key === 'ArrowLeft' && reels.length > 1) {
         resetPlaybackAndShare()
         onSelectIndex?.((selectedIndex - 1 + reels.length) % reels.length)
@@ -63,7 +81,7 @@ export function InstagramReelModal({
       document.body.style.overflow = originalOverflow
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen, selectedIndex, reels.length, onClose, onSelectIndex])
+  }, [isOpen, selectedIndex, reels.length, onClose, onSelectIndex, quickViewProduct])
 
   if (!isOpen || !reels.length) return null
 
@@ -363,27 +381,42 @@ export function InstagramReelModal({
                   className="relative w-[calc(50%-5px)] shrink-0 rounded-xl bg-[#18181b]/90 backdrop-blur-md border border-white/15 p-2.5 text-white flex flex-col justify-between shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* Square Image Thumbnail */}
-                  <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-zinc-800 mb-2">
-                    <img
-                      src={product.image || currentReel.image}
-                      alt={product.name}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
+                  {/* Opens the Quick View modal — wraps only the
+                      image/name/price area (never the button below) so
+                      this stays valid, non-nested interactive HTML. A real
+                      product-detail navigation only happens from inside
+                      Quick View's "View Product Details" action. */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setQuickViewProduct(product)
+                    }}
+                    aria-label={`Quick view ${product.name}`}
+                    className="flex w-full flex-col border-0 bg-transparent p-0 text-left cursor-pointer"
+                  >
+                    {/* Square Image Thumbnail */}
+                    <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-zinc-800 mb-2">
+                      <img
+                        src={product.image || currentReel.image}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
 
-                  {/* Title & External Link Icon */}
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <h5 className="text-[11px] font-bold text-white line-clamp-1 leading-tight">
-                      {product.name}
-                    </h5>
-                    <IconExternalLink className="h-3 w-3 shrink-0 text-white/70" />
-                  </div>
+                    {/* Title & External Link Icon */}
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <h5 className="text-[11px] font-bold text-white line-clamp-1 leading-tight">
+                        {product.name}
+                      </h5>
+                      <IconExternalLink className="h-3 w-3 shrink-0 text-white/70" />
+                    </div>
 
-                  {/* Price in Green */}
-                  <div className="text-xs font-black text-wa mb-2">
-                    ₹{product.price?.toLocaleString()}
-                  </div>
+                    {/* Price in Green */}
+                    <div className="text-xs font-black text-wa mb-2">
+                      ₹{product.price?.toLocaleString()}
+                    </div>
+                  </button>
 
                   {/* ADD TO ENQUIRY Button */}
                   <button
@@ -425,6 +458,22 @@ export function InstagramReelModal({
           </div>
         )}
       </div>
+
+      {quickViewProduct && (
+        <ProductQuickViewModal
+          product={quickViewProduct}
+          onClose={() => setQuickViewProduct(null)}
+          onAddToEnquiry={(product) => {
+            setQuickViewProduct(null)
+            addToEnquiry(product)
+          }}
+          onViewDetails={(product) => {
+            setQuickViewProduct(null)
+            onClose?.()
+            navigate(`/product/${product.slug}`)
+          }}
+        />
+      )}
     </div>
   )
 }

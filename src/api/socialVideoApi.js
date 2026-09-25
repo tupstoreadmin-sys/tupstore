@@ -23,7 +23,7 @@ const PUBLISHED_REEL_SELECT = `
   id, title, image, video_url, reel_url, account, views, duration, created_at,
   social_video_products (
     sort_order,
-    products ( id, name, image, price )
+    products ( id, name, slug, image, price, original_price, badge, rating, capacity, description )
   )
 `
 

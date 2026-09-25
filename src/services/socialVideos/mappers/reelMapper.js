@@ -30,7 +30,13 @@ function mapTaggedProducts(rows) {
     .map((row) => ({
       id: row.products.id,
       name: row.products.name,
+      slug: row.products.slug,
       price: row.products.price,
+      originalPrice: row.products.original_price ?? undefined,
+      badge: row.products.badge ?? undefined,
+      rating: row.products.rating,
+      capacity: row.products.capacity ?? undefined,
+      description: row.products.description ?? undefined,
       image: getImageUrl(row.products.image),
     }))
 }
