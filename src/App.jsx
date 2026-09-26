@@ -291,8 +291,7 @@ function AppShell() {
         onSubmit={submitEnquiry}
         submitting={submittingEnquiry}
         submitError={submitEnquiryError}
-        allowEmptyCart={Boolean(enquiry.promotion)}
-        promotionTitle={enquiry.promotion?.title}
+        promotion={enquiry.promotion}
       />
 
       <SearchOverlay

@@ -76,9 +76,18 @@ export function EnquiryProvider({ children }) {
   }
 
   const ids = useMemo(() => items.map((item) => item.id), [items])
+  // A staged promotion counts as exactly 1 (the offer itself), regardless of
+  // how many of its own tagged products are also in `items` — those are
+  // supporting content, not independently-counted line items (see
+  // EnquiryDrawer.jsx's own promotion summary block). This is also what
+  // fixes a 0-product promotion (`items` stays empty) from showing 0
+  // everywhere the badge is read — Header/MobileMenu/FloatingEnquiryButton/
+  // MobileBottomNav all read this same `count`. A normal, promotion-less
+  // enquiry is completely unaffected — same sum-of-qty as before.
   const count = useMemo(
-    () => items.reduce((sum, item) => sum + item.qty, 0),
-    [items]
+    () =>
+      promotion ? 1 : items.reduce((sum, item) => sum + item.qty, 0),
+    [items, promotion]
   )
 
   const value = {

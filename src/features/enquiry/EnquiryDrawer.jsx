@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '../../utils/cn'
-import { Button, EmptyState } from '../../components/ui'
+import { Button, EmptyState, ProductPrice } from '../../components/ui'
 import { IconClose, IconCart } from '../../components/layout/icons'
 import { EnquiryItem } from './EnquiryItem'
 import { EnquirySummary } from './EnquirySummary'
@@ -29,12 +29,13 @@ import { EnquiryCustomerForm } from './EnquiryCustomerForm'
  * @param {(details: import('../../models/Enquiry').CustomerDetails) => Promise<{id: string|null, persisted: boolean}>} [props.onSubmit]
  * @param {boolean} [props.submitting]
  * @param {string} [props.submitError]
- * @param {boolean} [props.allowEmptyCart] - true when the enquiry is "about"
- *   a promotion (see useAddPromotionToEnquiry.js) that may have zero tagged
- *   products — lets the drawer proceed to submit with 0 items, which it
- *   otherwise never allows
- * @param {string} [props.promotionTitle] - shown in place of the generic
- *   empty-cart message when `allowEmptyCart` is true and there are 0 items
+ * @param {{id: string, title: string, price?: number, originalPrice?: number}} [props.promotion] -
+ *   set when this enquiry is "about" a promotion (see
+ *   useAddPromotionToEnquiry.js). When present, `items` (that promotion's
+ *   own tagged products, if any) are shown as a plain reference list under
+ *   the promotion, never as independent line items with their own qty/
+ *   price/remove controls — and the drawer allows proceeding to submit even
+ *   with 0 items, which it otherwise never does.
  * @param {string} [props.className]
  */
 export function EnquiryDrawer({
@@ -47,8 +48,7 @@ export function EnquiryDrawer({
   onSubmit,
   submitting = false,
   submitError,
-  allowEmptyCart = false,
-  promotionTitle,
+  promotion,
   className,
 }) {
   const [step, setStep] = useState('cart')
@@ -81,7 +81,7 @@ export function EnquiryDrawer({
             <IconCart className="h-5 w-5" />
             Your Enquiry List
             <span className="text-sm font-normal text-ink-secondary">
-              ({items.length})
+              ({promotion ? 1 : items.length})
             </span>
           </h3>
           <button
@@ -117,16 +117,46 @@ export function EnquiryDrawer({
               submitting={submitting}
               error={submitError}
             />
-          ) : items.length === 0 && allowEmptyCart ? (
-            <EmptyState
-              icon="🎁"
-              title="Ready to enquire about this offer"
-              description={
-                promotionTitle
-                  ? `No individual products selected — you're enquiring about "${promotionTitle}".`
-                  : "You're enquiring about this offer."
-              }
-            />
+          ) : promotion ? (
+            // A promotion is one offer, not a set of independent line items
+            // — its own tagged products (if any) are shown below it as a
+            // plain reference list, never with their own qty/price/remove
+            // controls (see EnquiryContext.jsx's matching `count` rule and
+            // Admin's "Included Products" list, which uses the same plain-
+            // name-list treatment for the same reason).
+            <div className="flex flex-col gap-2 rounded-md border border-hairline bg-surface-subtle p-4">
+              <span className="w-fit rounded-full bg-black px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                Promotion
+              </span>
+              <p className="text-sm font-bold leading-[1.3] text-ink">
+                {promotion.title}
+              </p>
+              {promotion.price != null && (
+                <ProductPrice
+                  price={promotion.price}
+                  originalPrice={promotion.originalPrice}
+                />
+              )}
+              {items.length > 0 ? (
+                <div className="mt-1 border-t border-hairline pt-2">
+                  <p className="mb-1 text-xs font-medium text-ink-secondary">
+                    Included:
+                  </p>
+                  <ul className="flex flex-col gap-0.5">
+                    {items.map((item) => (
+                      <li key={item.id} className="text-sm text-ink">
+                        {item.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-xs text-ink-secondary">
+                  No individual products selected — you&apos;re enquiring
+                  about this offer.
+                </p>
+              )}
+            </div>
           ) : items.length === 0 ? (
             <EmptyState
               icon="📝"
@@ -149,7 +179,7 @@ export function EnquiryDrawer({
           )}
         </div>
 
-        {step === 'cart' && (items.length > 0 || allowEmptyCart) && (
+        {step === 'cart' && (items.length > 0 || promotion) && (
           <div className="flex flex-col gap-3 border-t border-hairline bg-surface-subtle p-6">
             <Button variant="secondary" fullWidth onClick={onClose}>
               Continue Shopping
