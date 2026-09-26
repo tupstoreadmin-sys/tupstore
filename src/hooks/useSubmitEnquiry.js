@@ -29,6 +29,7 @@ export function useSubmitEnquiry() {
         ...customerDetails,
         items,
         promotionId: promotion?.id ?? null,
+        promotionQuantity: promotion?.quantity ?? 1,
       })
 
       const message = buildEnquiryMessage({
@@ -40,6 +41,7 @@ export function useSubmitEnquiry() {
               price: promotion.price,
               originalPrice: promotion.originalPrice,
               includedProductNames: promotion.includedProductNames,
+              quantity: promotion.quantity,
             }
           : undefined,
       })

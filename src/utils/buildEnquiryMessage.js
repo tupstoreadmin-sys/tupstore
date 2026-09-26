@@ -5,15 +5,17 @@
  * @param {object} params
  * @param {import('../models/Enquiry').EnquiryItem[]} params.items
  * @param {import('../models/Enquiry').CustomerDetails} params.customerDetails
- * @param {{title: string, price?: number, originalPrice?: number, includedProductNames?: string[]}} [params.promotion] -
+ * @param {{title: string, price?: number, originalPrice?: number, includedProductNames?: string[], quantity?: number}} [params.promotion] -
  *   present only when this enquiry is "about" a promotion/combo (see
- *   useAddPromotionToEnquiry.js). `includedProductNames` (the promotion's
- *   own tagged products) are listed by name only for reference — never
- *   priced/totaled individually, since the promotion's own `price` is its
- *   own real total, not a sum of its tagged products' prices. `items` here
- *   are always independently-added products (a promotion and products
- *   coexist in one enquiry — client decision), listed separately under
- *   "Additional Products" when both are present.
+ *   useAddPromotionToEnquiry.js). `quantity` (default 1) is how many units
+ *   of the offer were requested — the message shows `Offer Price ... each`
+ *   plus a `Promotion Total` (price × quantity), never the promotion's own
+ *   `originalPrice` and never `includedProductNames` (informational only,
+ *   never shown to the customer in this message — client decision). `items`
+ *   here are always independently-added products (a promotion and products
+ *   coexist in one enquiry), listed separately under "Additional Products"
+ *   when both are present, and folded into one "Total Enquiry Value" with
+ *   the promotion total.
  * @returns {string}
  */
 export function buildEnquiryMessage({ items, customerDetails, promotion }) {
@@ -62,43 +64,48 @@ function buildProductLines(items) {
 }
 
 function buildPromotionLines(items, promotion) {
+  const quantity = promotion.quantity ?? 1
+
   const lines = [
     'Hello Tupperware Store,',
     '',
-    'I would like to enquire about the following offer:',
+    'I would like to enquire about the following:',
     '',
-    `Promotion: ${promotion.title}`,
+    'Promotion:',
+    promotion.title,
+    `Qty: ${quantity}`,
   ]
 
+  // Never `originalPrice` and never `includedProductNames` here — both are
+  // informational-only (drawer/Admin), deliberately excluded from the
+  // customer-facing WhatsApp text (client decision).
+  let promotionTotal = 0
   if (promotion.price != null) {
-    lines.push(`Offer Price: ₹${promotion.price.toLocaleString('en-IN')}`)
-    if (promotion.originalPrice != null && promotion.originalPrice > promotion.price) {
-      lines.push(`Original Price: ₹${promotion.originalPrice.toLocaleString('en-IN')}`)
-    }
+    promotionTotal = promotion.price * quantity
+    lines.push(`Offer Price: ₹${promotion.price.toLocaleString('en-IN')} each`)
+    lines.push(`Promotion Total: ₹${promotionTotal.toLocaleString('en-IN')}`)
   }
   lines.push('')
 
-  // Byte-identical to the pre-combined-enquiry behavior when there are no
-  // independently-added products (`items` was previously auto-populated
-  // with these same names for a promotion-only enquiry, in the same order).
-  const includedNames = promotion.includedProductNames ?? []
-  if (includedNames.length > 0) {
-    lines.push(
-      items.length > 0 ? 'Included Products:' : 'Included Products (for reference):'
-    )
-    includedNames.forEach((name) => lines.push(`- ${name}`))
-    lines.push('')
-  }
-
   // Independently-added products, only ever present alongside a promotion
-  // now that one no longer replaces the other — kept deliberately simple
-  // (name × qty, no per-item price/line-total) since the promotion's own
-  // price is already the enquiry's real total, not these products' sum.
+  // now that one no longer replaces the other. Each gets its own unit
+  // price line (no per-item line-total) — the combined grand total below
+  // does that multiplication once.
+  let productsTotal = 0
   if (items.length > 0) {
     lines.push('Additional Products:')
-    items.forEach((item) => lines.push(`- ${item.name} × ${item.qty}`))
-    lines.push('')
+    items.forEach((item) => {
+      productsTotal += item.price * item.qty
+      lines.push(`${item.name} × ${item.qty}`)
+      lines.push(`Price: ₹${item.price.toLocaleString('en-IN')}`)
+      lines.push('')
+    })
   }
+
+  lines.push(
+    `Total Enquiry Value: ₹${(promotionTotal + productsTotal).toLocaleString('en-IN')}`
+  )
+  lines.push('')
 
   return lines
 }

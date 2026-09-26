@@ -7,15 +7,16 @@ import { cn } from '../../utils/cn'
 /**
  * @param {object} props
  * @param {{price:number, qty:number}[]} props.items
- * @param {number} [props.promotionPrice] - the staged promotion's own offer
- *   price (never `originalPrice`), added once as a flat amount alongside
- *   the independently-added items' line totals — never per-item, since a
- *   promotion is one priced offer, not a sum of its tagged products.
+ * @param {number} [props.promotionTotal] - the staged promotion's own offer
+ *   price × its quantity (never `originalPrice`, and never multiplied by the
+ *   count of its tagged products), added once alongside the
+ *   independently-added items' line totals — the caller (EnquiryDrawer)
+ *   does the price × quantity multiplication, this component just sums.
  * @param {string} [props.className]
  */
-export function EnquirySummary({ items = [], promotionPrice, className }) {
+export function EnquirySummary({ items = [], promotionTotal, className }) {
   const total =
-    (promotionPrice ?? 0) +
+    (promotionTotal ?? 0) +
     items.reduce((sum, item) => sum + item.price * item.qty, 0)
 
   return (

@@ -42,15 +42,20 @@ import { EnquiryCustomerForm } from './EnquiryCustomerForm'
  * @param {(details: import('../../models/Enquiry').CustomerDetails) => Promise<{id: string|null, persisted: boolean}>} [props.onSubmit]
  * @param {boolean} [props.submitting]
  * @param {string} [props.submitError]
- * @param {{id: string, title: string, price?: number, originalPrice?: number, includedProductNames?: string[]}} [props.promotion] -
+ * @param {{id: string, title: string, price?: number, originalPrice?: number, includedProductNames?: string[], quantity: number}} [props.promotion] -
  *   set when this enquiry is "about" a promotion (see
  *   useAddPromotionToEnquiry.js). Its own tagged products (`includedProductNames`)
  *   are shown as a plain reference list under the promotion, never as
  *   independent line items with their own qty/price/remove controls, and
  *   coexist with any independently-added products in `items` below it. The
  *   drawer allows proceeding to submit with 0 items whenever a promotion is
- *   present, which it otherwise never does.
+ *   present, which it otherwise never does. `quantity` (min 1) has its own
+ *   +/− control using the same pattern as a normal item's quantity control
+ *   (see EnquiryItem.jsx) — Remove Promotion (below) is the only way to
+ *   drop it to 0/clear it entirely.
  * @param {() => void} [props.onRemovePromotion]
+ * @param {() => void} [props.onIncrementPromotion]
+ * @param {() => void} [props.onDecrementPromotion]
  * @param {string} [props.className]
  */
 export function EnquiryDrawer({
@@ -65,6 +70,8 @@ export function EnquiryDrawer({
   submitError,
   promotion,
   onRemovePromotion,
+  onIncrementPromotion,
+  onDecrementPromotion,
   className,
 }) {
   const [step, setStep] = useState('cart')
@@ -97,7 +104,8 @@ export function EnquiryDrawer({
             <IconCart className="h-5 w-5" />
             Your Enquiry List
             <span className="text-sm font-normal text-ink-secondary">
-              ({(promotion ? 1 : 0) + items.length})
+              ({(promotion ? promotion.quantity : 0) +
+                items.reduce((sum, item) => sum + item.qty, 0)})
             </span>
           </h3>
           <button
@@ -172,6 +180,27 @@ export function EnquiryDrawer({
                       originalPrice={promotion.originalPrice}
                     />
                   )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label="Decrease promotion quantity"
+                      onClick={onDecrementPromotion}
+                      className="flex h-6 w-6 items-center justify-center rounded border border-hairline bg-white text-ink transition-colors duration-fast ease-brand hover:bg-surface-subtle"
+                    >
+                      −
+                    </button>
+                    <span className="text-[13px] font-semibold text-ink">
+                      Qty: {promotion.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Increase promotion quantity"
+                      onClick={onIncrementPromotion}
+                      className="flex h-6 w-6 items-center justify-center rounded border border-hairline bg-white text-ink transition-colors duration-fast ease-brand hover:bg-surface-subtle"
+                    >
+                      +
+                    </button>
+                  </div>
                   {promotion.includedProductNames?.length > 0 ? (
                     <div className="mt-1 border-t border-hairline pt-2">
                       <p className="mb-1 text-xs font-medium text-ink-secondary">
@@ -208,7 +237,11 @@ export function EnquiryDrawer({
               {(promotion || items.length > 0) && (
                 <EnquirySummary
                   items={items}
-                  promotionPrice={promotion?.price}
+                  promotionTotal={
+                    promotion?.price != null
+                      ? promotion.price * promotion.quantity
+                      : undefined
+                  }
                   className="mt-2"
                 />
               )}

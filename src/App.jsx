@@ -298,6 +298,8 @@ function AppShell() {
         submitError={submitEnquiryError}
         promotion={enquiry.promotion}
         onRemovePromotion={enquiry.removePromotion}
+        onIncrementPromotion={enquiry.incrementPromotionQuantity}
+        onDecrementPromotion={enquiry.decrementPromotionQuantity}
       />
 
       <SearchOverlay

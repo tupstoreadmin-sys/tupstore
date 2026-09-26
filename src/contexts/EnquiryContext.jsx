@@ -22,7 +22,9 @@ export function EnquiryProvider({ children }) {
   // promotion's tagged products' names (not full product data — no
   // duplication), just enough to render "Included: ..." without a second
   // fetch. `price`/`originalPrice` are the combo's own offer pricing,
-  // captured once for the same reason.
+  // captured once for the same reason. `quantity` (default 1, minimum 1) is
+  // how many units of the whole offer the customer wants — see
+  // incrementPromotionQuantity/decrementPromotionQuantity below.
   const [promotion, setPromotion] = useState(null)
 
   const addItem = (product, qty = 1, color) => {
@@ -71,6 +73,23 @@ export function EnquiryProvider({ children }) {
 
   const removePromotion = () => setPromotion(null)
 
+  // Mirrors incrementItem/decrementItem's shape for a normal product, but
+  // there is only ever one staged promotion, so these act on `promotion`
+  // directly rather than finding a row by id. The promotion must never drop
+  // to 0 while staged — Remove Promotion (above) is the only way to clear it
+  // entirely, matching this task's own explicit rule.
+  const incrementPromotionQuantity = () =>
+    setPromotion((current) =>
+      current ? { ...current, quantity: current.quantity + 1 } : current
+    )
+
+  const decrementPromotionQuantity = () =>
+    setPromotion((current) =>
+      current
+        ? { ...current, quantity: Math.max(1, current.quantity - 1) }
+        : current
+    )
+
   // Resets `promotion` together with `items` — the two always represent one
   // enquiry's lifecycle together (see useSubmitEnquiry.js, the only caller
   // after a successful submit).
@@ -80,14 +99,15 @@ export function EnquiryProvider({ children }) {
   }
 
   const ids = useMemo(() => items.map((item) => item.id), [items])
-  // A staged promotion contributes exactly 1 (the offer itself, regardless
-  // of how many of its own tagged products it has — those are never in
-  // `items`, see the `promotion` state comment above), plus the normal
-  // sum-of-qty for any independently-added products. A promotion-less
-  // enquiry is unaffected — same sum-of-qty as always.
+  // A staged promotion contributes its own `quantity` (regardless of how
+  // many of its own tagged products it has — those are never in `items`,
+  // see the `promotion` state comment above), plus the normal sum-of-qty for
+  // any independently-added products. A promotion-less enquiry is
+  // unaffected — same sum-of-qty as always.
   const count = useMemo(
     () =>
-      (promotion ? 1 : 0) + items.reduce((sum, item) => sum + item.qty, 0),
+      (promotion ? promotion.quantity : 0) +
+      items.reduce((sum, item) => sum + item.qty, 0),
     [items, promotion]
   )
 
@@ -98,6 +118,8 @@ export function EnquiryProvider({ children }) {
     promotion,
     setPromotion,
     removePromotion,
+    incrementPromotionQuantity,
+    decrementPromotionQuantity,
     addItem,
     incrementItem,
     decrementItem,

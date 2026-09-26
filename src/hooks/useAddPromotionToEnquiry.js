@@ -32,6 +32,7 @@ export function useAddPromotionToEnquiry() {
       price: promotion.price,
       originalPrice: promotion.originalPrice,
       includedProductNames: (promotion.products ?? []).map((p) => p.name),
+      quantity: 1,
     })
     openEnquiryDrawer()
   }

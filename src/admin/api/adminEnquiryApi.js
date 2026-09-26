@@ -51,7 +51,7 @@ export async function getAdminEnquiryById(enquiryId) {
     .from('enquiries')
     .select(
       `id, customer_name, customer_phone, customer_email, customer_message, status, created_at,
-       promotion_id, promotions ( id, title, price, original_price, promotion_products ( products ( name ) ) ),
+       promotion_id, promotion_quantity, promotions ( id, title, price, original_price, promotion_products ( products ( name ) ) ),
        enquiry_items ( id, quantity, selected_color, price_at_enquiry, products ( id, name, image, slug, product_code ) )`
     )
     .eq('id', enquiryId)

@@ -141,9 +141,20 @@ export function AdminEnquiryDetailModal({ enquiry, onStatusChange, onClose }) {
               <p className="text-sm font-medium text-slate-900">
                 {enquiry.promotions.title}
               </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Quantity: {enquiry.promotion_quantity ?? 1}
+              </p>
               {formatInr(enquiry.promotions.price) && (
-                <p className="mt-1 text-xs text-slate-500">
-                  Offer Price: {formatInr(enquiry.promotions.price)}
+                <p className="text-xs text-slate-500">
+                  Offer Price: {formatInr(enquiry.promotions.price)} each
+                </p>
+              )}
+              {formatInr(enquiry.promotions.price) && (
+                <p className="text-xs text-slate-500">
+                  Promotion Total:{' '}
+                  {formatInr(
+                    enquiry.promotions.price * (enquiry.promotion_quantity ?? 1)
+                  )}
                 </p>
               )}
               {formatInr(enquiry.promotions.original_price) &&
