@@ -14,9 +14,16 @@ import { EnquiryCustomerForm } from './EnquiryCustomerForm'
 //
 // Milestone 8 adds a local `step` (cart → details → success) — pure UI
 // flow state, not business data, same category of local state ProductInfo
-// already owns for qty/color. `if (!isOpen) return null` below unmounts
-// this whole subtree on close, so `step` resets to 'cart' for free the
-// next time the drawer opens — no explicit reset needed.
+// already owns for qty/color. `if (!isOpen) return null` alone does NOT
+// unmount this component — a plain `<EnquiryDrawer isOpen={...} />` at a
+// stable tree position keeps the same instance (and its `step`/`result`
+// state) alive across every close/reopen, it just skips rendering while
+// closed. App.jsx gives this component a `key` tied to `isOpen` specifically
+// so that closing and reopening *does* force a real unmount/remount — that
+// is what actually resets `step`/`result` back to a fresh cart view each
+// time the drawer opens; without it, closing from the success screen
+// (Done, the X button, or the overlay) and reopening redisplays the same
+// stale success screen instead of the current enquiry state.
 
 /**
  * @param {object} props

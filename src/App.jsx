@@ -282,6 +282,11 @@ function AppShell() {
       />
 
       <EnquiryDrawer
+        // Forces a real unmount/remount on every open/close toggle, so the
+        // drawer's own local `step`/`result` state (cart → details →
+        // success) never persists stale across closing and reopening — see
+        // EnquiryDrawer.jsx's own header comment.
+        key={ui.enquiryDrawerOpen}
         isOpen={ui.enquiryDrawerOpen}
         onClose={ui.closeEnquiryDrawer}
         items={enquiry.items}
