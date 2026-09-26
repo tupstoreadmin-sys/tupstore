@@ -35,18 +35,23 @@ export async function getAdminEnquiries() {
 // they are enquiry-specific historical facts (what was actually requested,
 // at what price, at the time of the enquiry), preserved intentionally even
 // if the product's current price/name later changes.
-// `promotions(id, title, price, original_price)` is present only when this
-// enquiry is "about" a promotion (promotion_id set) — see
-// AdminEnquiryDetailModal.jsx, which branches its whole items section on
-// this field. The existing enquiry_items embed is unchanged: a promotion
-// enquiry's tagged products still insert as ordinary enquiry_items rows
-// (see api/enquiryApi.js), just displayed differently for that case.
+// `promotions(id, title, price, original_price, promotion_products(...))` is
+// present only when this enquiry is "about" a promotion (promotion_id set)
+// — see AdminEnquiryDetailModal.jsx. `promotion_products` here is the same
+// existing tagging relation PromotionFormModal/PromotionDetailPage already
+// read (0012_promotions.sql) — it is the promotion's own "Included
+// Products" reference list, read live through the FK, never duplicated.
+// `enquiry_items` is a fully separate concept now: a promotion and
+// independently-added products coexist in one enquiry (client decision),
+// so `enquiry_items` only ever holds products the customer added directly
+// — the promotion's own tagged products are never inserted there (see
+// api/enquiryApi.js/useAddPromotionToEnquiry.js).
 export async function getAdminEnquiryById(enquiryId) {
   const { data, error } = await supabase
     .from('enquiries')
     .select(
       `id, customer_name, customer_phone, customer_email, customer_message, status, created_at,
-       promotion_id, promotions ( id, title, price, original_price ),
+       promotion_id, promotions ( id, title, price, original_price, promotion_products ( products ( name ) ) ),
        enquiry_items ( id, quantity, selected_color, price_at_enquiry, products ( id, name, image, slug, product_code ) )`
     )
     .eq('id', enquiryId)

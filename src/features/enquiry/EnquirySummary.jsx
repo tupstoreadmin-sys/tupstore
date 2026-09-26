@@ -7,10 +7,16 @@ import { cn } from '../../utils/cn'
 /**
  * @param {object} props
  * @param {{price:number, qty:number}[]} props.items
+ * @param {number} [props.promotionPrice] - the staged promotion's own offer
+ *   price (never `originalPrice`), added once as a flat amount alongside
+ *   the independently-added items' line totals — never per-item, since a
+ *   promotion is one priced offer, not a sum of its tagged products.
  * @param {string} [props.className]
  */
-export function EnquirySummary({ items = [], className }) {
-  const total = items.reduce((sum, item) => sum + item.price * item.qty, 0)
+export function EnquirySummary({ items = [], promotionPrice, className }) {
+  const total =
+    (promotionPrice ?? 0) +
+    items.reduce((sum, item) => sum + item.price * item.qty, 0)
 
   return (
     <div

@@ -24,6 +24,12 @@ import { EnquiryCustomerForm } from './EnquiryCustomerForm'
 // time the drawer opens; without it, closing from the success screen
 // (Done, the X button, or the overlay) and reopening redisplays the same
 // stale success screen instead of the current enquiry state.
+//
+// A staged promotion and independently-added products render together
+// (client decision) — the promotion's own compact block, then the normal
+// per-item product list below it, exactly as each already renders alone.
+// `items` never contains the promotion's own tagged products (see
+// EnquiryContext.jsx), so there is no overlap to reconcile.
 
 /**
  * @param {object} props
@@ -36,13 +42,15 @@ import { EnquiryCustomerForm } from './EnquiryCustomerForm'
  * @param {(details: import('../../models/Enquiry').CustomerDetails) => Promise<{id: string|null, persisted: boolean}>} [props.onSubmit]
  * @param {boolean} [props.submitting]
  * @param {string} [props.submitError]
- * @param {{id: string, title: string, price?: number, originalPrice?: number}} [props.promotion] -
+ * @param {{id: string, title: string, price?: number, originalPrice?: number, includedProductNames?: string[]}} [props.promotion] -
  *   set when this enquiry is "about" a promotion (see
- *   useAddPromotionToEnquiry.js). When present, `items` (that promotion's
- *   own tagged products, if any) are shown as a plain reference list under
- *   the promotion, never as independent line items with their own qty/
- *   price/remove controls — and the drawer allows proceeding to submit even
- *   with 0 items, which it otherwise never does.
+ *   useAddPromotionToEnquiry.js). Its own tagged products (`includedProductNames`)
+ *   are shown as a plain reference list under the promotion, never as
+ *   independent line items with their own qty/price/remove controls, and
+ *   coexist with any independently-added products in `items` below it. The
+ *   drawer allows proceeding to submit with 0 items whenever a promotion is
+ *   present, which it otherwise never does.
+ * @param {() => void} [props.onRemovePromotion]
  * @param {string} [props.className]
  */
 export function EnquiryDrawer({
@@ -56,6 +64,7 @@ export function EnquiryDrawer({
   submitting = false,
   submitError,
   promotion,
+  onRemovePromotion,
   className,
 }) {
   const [step, setStep] = useState('cart')
@@ -88,7 +97,7 @@ export function EnquiryDrawer({
             <IconCart className="h-5 w-5" />
             Your Enquiry List
             <span className="text-sm font-normal text-ink-secondary">
-              ({promotion ? 1 : items.length})
+              ({(promotion ? 1 : 0) + items.length})
             </span>
           </h3>
           <button
@@ -124,47 +133,7 @@ export function EnquiryDrawer({
               submitting={submitting}
               error={submitError}
             />
-          ) : promotion ? (
-            // A promotion is one offer, not a set of independent line items
-            // — its own tagged products (if any) are shown below it as a
-            // plain reference list, never with their own qty/price/remove
-            // controls (see EnquiryContext.jsx's matching `count` rule and
-            // Admin's "Included Products" list, which uses the same plain-
-            // name-list treatment for the same reason).
-            <div className="flex flex-col gap-2 rounded-md border border-hairline bg-surface-subtle p-4">
-              <span className="w-fit rounded-full bg-black px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                Promotion
-              </span>
-              <p className="text-sm font-bold leading-[1.3] text-ink">
-                {promotion.title}
-              </p>
-              {promotion.price != null && (
-                <ProductPrice
-                  price={promotion.price}
-                  originalPrice={promotion.originalPrice}
-                />
-              )}
-              {items.length > 0 ? (
-                <div className="mt-1 border-t border-hairline pt-2">
-                  <p className="mb-1 text-xs font-medium text-ink-secondary">
-                    Included:
-                  </p>
-                  <ul className="flex flex-col gap-0.5">
-                    {items.map((item) => (
-                      <li key={item.id} className="text-sm text-ink">
-                        {item.name}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <p className="text-xs text-ink-secondary">
-                  No individual products selected — you&apos;re enquiring
-                  about this offer.
-                </p>
-              )}
-            </div>
-          ) : items.length === 0 ? (
+          ) : !promotion && items.length === 0 ? (
             <EmptyState
               icon="📝"
               title="Your enquiry list is empty"
@@ -172,16 +141,77 @@ export function EnquiryDrawer({
             />
           ) : (
             <div className="flex flex-col gap-4">
-              {items.map((item) => (
-                <EnquiryItem
-                  key={item.id}
-                  item={item}
-                  onIncrement={onIncrement}
-                  onDecrement={onDecrement}
-                  onRemove={onRemove}
+              {promotion && (
+                // A promotion is one offer, not a normal line item — its own
+                // tagged products (if any) are a plain reference list, never
+                // with their own qty/price/remove controls (see
+                // EnquiryContext.jsx's matching `count` rule and Admin's
+                // "Included Products" list, same treatment for the same
+                // reason). It coexists with any independently-added
+                // products in the normal item list below.
+                <div className="flex flex-col gap-2 rounded-md border border-hairline bg-surface-subtle p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="w-fit rounded-full bg-black px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                      Promotion
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Remove promotion"
+                      onClick={onRemovePromotion}
+                      className="p-1 text-ink-secondary transition-colors duration-fast ease-brand hover:text-error"
+                    >
+                      <IconClose className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="text-sm font-bold leading-[1.3] text-ink">
+                    {promotion.title}
+                  </p>
+                  {promotion.price != null && (
+                    <ProductPrice
+                      price={promotion.price}
+                      originalPrice={promotion.originalPrice}
+                    />
+                  )}
+                  {promotion.includedProductNames?.length > 0 ? (
+                    <div className="mt-1 border-t border-hairline pt-2">
+                      <p className="mb-1 text-xs font-medium text-ink-secondary">
+                        Included:
+                      </p>
+                      <ul className="flex flex-col gap-0.5">
+                        {promotion.includedProductNames.map((name) => (
+                          <li key={name} className="text-sm text-ink">
+                            {name}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-ink-secondary">
+                      No individual products selected — you&apos;re enquiring
+                      about this offer.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {items.length > 0 &&
+                items.map((item) => (
+                  <EnquiryItem
+                    key={item.id}
+                    item={item}
+                    onIncrement={onIncrement}
+                    onDecrement={onDecrement}
+                    onRemove={onRemove}
+                  />
+                ))}
+
+              {(promotion || items.length > 0) && (
+                <EnquirySummary
+                  items={items}
+                  promotionPrice={promotion?.price}
+                  className="mt-2"
                 />
-              ))}
-              <EnquirySummary items={items} className="mt-2" />
+              )}
             </div>
           )}
         </div>

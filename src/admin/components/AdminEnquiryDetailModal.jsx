@@ -44,6 +44,13 @@ export function AdminEnquiryDetailModal({ enquiry, onStatusChange, onClose }) {
   const [error, setError] = useState('')
 
   const items = enquiry.enquiry_items ?? []
+  // The promotion's own tagged products (its "Included Products" reference
+  // list) — read live via promotion_products, completely separate from
+  // `items` above, which now only ever holds independently-added products
+  // (a promotion and products coexist in one enquiry — client decision).
+  const includedProducts = (enquiry.promotions?.promotion_products ?? [])
+    .map((pp) => pp.products?.name)
+    .filter(Boolean)
 
   const handleStatusChange = async (e) => {
     const nextStatus = e.target.value
@@ -146,15 +153,15 @@ export function AdminEnquiryDetailModal({ enquiry, onStatusChange, onClose }) {
                   </p>
                 )}
 
-              {items.length > 0 && (
+              {includedProducts.length > 0 && (
                 <div className="mt-3">
                   <p className="mb-1 text-xs font-medium text-slate-500">
-                    Included Products ({items.length})
+                    Included Products ({includedProducts.length})
                   </p>
                   <ul className="flex flex-col gap-1">
-                    {items.map((item) => (
-                      <li key={item.id} className="text-sm text-slate-700">
-                        {item.products?.name || 'Product unavailable'}
+                    {includedProducts.map((name) => (
+                      <li key={name} className="text-sm text-slate-700">
+                        {name}
                       </li>
                     ))}
                   </ul>
@@ -163,10 +170,11 @@ export function AdminEnquiryDetailModal({ enquiry, onStatusChange, onClose }) {
             </div>
           )}
 
-          {!enquiry.promotions && (
+          {(items.length > 0 || !enquiry.promotions) && (
           <div className="border-t border-slate-200 pt-4">
             <p className="mb-2 text-xs font-medium text-slate-500">
-              Requested Products {items.length > 0 && `(${items.length})`}
+              {enquiry.promotions ? 'Additional Products' : 'Requested Products'}{' '}
+              {items.length > 0 && `(${items.length})`}
             </p>
 
             {items.length === 0 && (

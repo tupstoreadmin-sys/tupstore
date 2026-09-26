@@ -14,13 +14,15 @@ const EnquiryContext = createContext(null)
 export function EnquiryProvider({ children }) {
   const [items, setItems] = useState([])
   // The promotion an enquiry is currently "about", if any — at most one at
-  // a time (see useAddPromotionToEnquiry.js/useAddToEnquiry.js, the only
-  // two places that ever call setPromotion). `productIds` is only the
-  // tagged products' ids (not their name/image/price), just enough to tell
-  // "belongs to this promotion" apart from "unrelated product" — not a
-  // duplication of product data. `price`/`originalPrice` are the combo's
-  // own offer pricing, captured once so the enquiry message/drawer can show
-  // it without a second fetch.
+  // a time (see useAddPromotionToEnquiry.js, the only place that ever calls
+  // setPromotion). A promotion and independently-added products coexist in
+  // one enquiry (client decision) — `items` never contains a promotion's own
+  // tagged products, only products the customer added directly, so the two
+  // never need reconciling. `includedProductNames` is a plain list of the
+  // promotion's tagged products' names (not full product data — no
+  // duplication), just enough to render "Included: ..." without a second
+  // fetch. `price`/`originalPrice` are the combo's own offer pricing,
+  // captured once for the same reason.
   const [promotion, setPromotion] = useState(null)
 
   const addItem = (product, qty = 1, color) => {
@@ -67,6 +69,8 @@ export function EnquiryProvider({ children }) {
   const removeItem = (item) =>
     setItems((current) => current.filter((i) => i.id !== item.id))
 
+  const removePromotion = () => setPromotion(null)
+
   // Resets `promotion` together with `items` — the two always represent one
   // enquiry's lifecycle together (see useSubmitEnquiry.js, the only caller
   // after a successful submit).
@@ -76,17 +80,14 @@ export function EnquiryProvider({ children }) {
   }
 
   const ids = useMemo(() => items.map((item) => item.id), [items])
-  // A staged promotion counts as exactly 1 (the offer itself), regardless of
-  // how many of its own tagged products are also in `items` — those are
-  // supporting content, not independently-counted line items (see
-  // EnquiryDrawer.jsx's own promotion summary block). This is also what
-  // fixes a 0-product promotion (`items` stays empty) from showing 0
-  // everywhere the badge is read — Header/MobileMenu/FloatingEnquiryButton/
-  // MobileBottomNav all read this same `count`. A normal, promotion-less
-  // enquiry is completely unaffected — same sum-of-qty as before.
+  // A staged promotion contributes exactly 1 (the offer itself, regardless
+  // of how many of its own tagged products it has — those are never in
+  // `items`, see the `promotion` state comment above), plus the normal
+  // sum-of-qty for any independently-added products. A promotion-less
+  // enquiry is unaffected — same sum-of-qty as always.
   const count = useMemo(
     () =>
-      promotion ? 1 : items.reduce((sum, item) => sum + item.qty, 0),
+      (promotion ? 1 : 0) + items.reduce((sum, item) => sum + item.qty, 0),
     [items, promotion]
   )
 
@@ -96,6 +97,7 @@ export function EnquiryProvider({ children }) {
     count,
     promotion,
     setPromotion,
+    removePromotion,
     addItem,
     incrementItem,
     decrementItem,

@@ -5,12 +5,15 @@
  * @param {object} params
  * @param {import('../models/Enquiry').EnquiryItem[]} params.items
  * @param {import('../models/Enquiry').CustomerDetails} params.customerDetails
- * @param {{title: string, price?: number, originalPrice?: number}} [params.promotion] -
+ * @param {{title: string, price?: number, originalPrice?: number, includedProductNames?: string[]}} [params.promotion] -
  *   present only when this enquiry is "about" a promotion/combo (see
- *   useAddPromotionToEnquiry.js). When set, `items` (that promotion's
- *   tagged products, if any) are listed by name only for reference — never
- *   priced/totaled individually, since the promotion's own `price` is the
- *   enquiry's one real total, not a sum of its tagged products' prices.
+ *   useAddPromotionToEnquiry.js). `includedProductNames` (the promotion's
+ *   own tagged products) are listed by name only for reference — never
+ *   priced/totaled individually, since the promotion's own `price` is its
+ *   own real total, not a sum of its tagged products' prices. `items` here
+ *   are always independently-added products (a promotion and products
+ *   coexist in one enquiry — client decision), listed separately under
+ *   "Additional Products" when both are present.
  * @returns {string}
  */
 export function buildEnquiryMessage({ items, customerDetails, promotion }) {
@@ -75,9 +78,25 @@ function buildPromotionLines(items, promotion) {
   }
   lines.push('')
 
+  // Byte-identical to the pre-combined-enquiry behavior when there are no
+  // independently-added products (`items` was previously auto-populated
+  // with these same names for a promotion-only enquiry, in the same order).
+  const includedNames = promotion.includedProductNames ?? []
+  if (includedNames.length > 0) {
+    lines.push(
+      items.length > 0 ? 'Included Products:' : 'Included Products (for reference):'
+    )
+    includedNames.forEach((name) => lines.push(`- ${name}`))
+    lines.push('')
+  }
+
+  // Independently-added products, only ever present alongside a promotion
+  // now that one no longer replaces the other — kept deliberately simple
+  // (name × qty, no per-item price/line-total) since the promotion's own
+  // price is already the enquiry's real total, not these products' sum.
   if (items.length > 0) {
-    lines.push('Included Products (for reference):')
-    items.forEach((item) => lines.push(`- ${item.name}`))
+    lines.push('Additional Products:')
+    items.forEach((item) => lines.push(`- ${item.name} × ${item.qty}`))
     lines.push('')
   }
 

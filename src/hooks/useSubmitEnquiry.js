@@ -35,7 +35,12 @@ export function useSubmitEnquiry() {
         items,
         customerDetails,
         promotion: promotion
-          ? { title: promotion.title, price: promotion.price, originalPrice: promotion.originalPrice }
+          ? {
+              title: promotion.title,
+              price: promotion.price,
+              originalPrice: promotion.originalPrice,
+              includedProductNames: promotion.includedProductNames,
+            }
           : undefined,
       })
       const opened = window.open(

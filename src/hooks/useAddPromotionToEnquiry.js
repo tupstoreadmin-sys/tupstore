@@ -5,42 +5,33 @@ import { useUI } from '../contexts/UIContext'
 // the promotion-side counterpart to useAddToEnquiry.js, same role (the
 // only place allowed to know both EnquiryContext and UIContext exist).
 //
-// A promotion is an independent enquiry subject; its tagged products (zero,
-// one, or many) are supporting content, never priced independently here
-// (see buildEnquiryMessage.js). An enquiry holds at most one promotion —
-// see useAddToEnquiry.js's own mirror-image check for the reverse
-// direction (adding a normal product while a promotion is staged).
+// A promotion is an independent enquiry subject that coexists with any
+// independently-added products (client decision) — staging a promotion
+// never touches `items`, never clears existing products, and never needs a
+// confirmation. Only ONE promotion at a time is supported (matching the
+// single `enquiries.promotion_id` column) — adding a different promotion
+// while one is already staged simply replaces it.
+//
+// The promotion's own tagged products are deliberately NOT added to
+// `items` — they are supporting/reference content (see
+// EnquiryDrawer.jsx's "Included:" list), never independent line items, and
+// must never be inserted into enquiry_items unless the customer separately
+// adds that exact product via the normal product Add-to-Enquiry flow.
 
 /**
  * @returns {(promotion: import('../services/promotions/PromotionsRepository').Promotion) => void}
  */
 export function useAddPromotionToEnquiry() {
-  const { items, addItem, promotion: staged, setPromotion, clearItems } = useEnquiry()
+  const { setPromotion } = useEnquiry()
   const { openEnquiryDrawer } = useUI()
 
   return (promotion) => {
-    const hasConflict =
-      (items.length > 0 && staged == null) || // Case C — unrelated product(s) already present
-      (staged != null && staged.id !== promotion.id) // Case D — a different promotion already staged
-
-    if (hasConflict) {
-      const previousLabel = staged ? `"${staged.title}" offer` : 'other items'
-      const confirmed = window.confirm(
-        `Your enquiry list currently has ${previousLabel}. Adding "${promotion.title}" will replace it with this offer. Continue?`
-      )
-      if (!confirmed) return
-      clearItems()
-    }
-
-    const products = promotion.products ?? []
-    products.forEach((product) => addItem(product, 1))
-
     setPromotion({
       id: promotion.id,
       title: promotion.title,
       price: promotion.price,
       originalPrice: promotion.originalPrice,
-      productIds: products.map((p) => p.id),
+      includedProductNames: (promotion.products ?? []).map((p) => p.name),
     })
     openEnquiryDrawer()
   }
