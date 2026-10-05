@@ -214,6 +214,27 @@ export function ProductImageManager({
       return
     }
 
+    // A Published product is visible to customers, so it must keep at least
+    // one image. Removing the last one is refused until the admin has
+    // deliberately changed the product to Draft (and saved) — the status is
+    // never changed automatically. Checked against the SAVED status (fresh
+    // read, not the form's possibly-unsaved dropdown) so it can't be
+    // sidestepped, and before the confirm dialog so nothing is deleted.
+    if (remainingCount === 0) {
+      try {
+        const product = await getAdminProductById(productId)
+        if (product?.status === 'published') {
+          setError(
+            'A published product must have an image, so its last image can’t be deleted. Change this product’s Status to Draft and save it first, then you can remove the image.'
+          )
+          return
+        }
+      } catch {
+        setError('Could not check this product’s status. Please try again.')
+        return
+      }
+    }
+
     if (!window.confirm('Delete this image? This cannot be undone.')) return
 
     setBusyImageId(image.id)

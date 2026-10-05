@@ -46,7 +46,12 @@ export async function getActiveHeroSlides() {
 // so SupabaseHeroRepository never needs to look up products one at a time.
 export async function getProductSlugsByIds(ids) {
   if (!ids || ids.length === 0) return []
-  const { data, error } = await supabase.from('products').select('id, slug').in('id', ids)
+  // Published only — a hero button must never link to a draft product.
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, slug')
+    .in('id', ids)
+    .eq('status', 'published')
   handleApiError(error, 'getProductSlugsByIds')
   return data ?? []
 }

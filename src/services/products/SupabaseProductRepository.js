@@ -143,11 +143,10 @@ export class SupabaseProductRepository extends ProductRepository {
     const source = await productApi.getProductById(productId)
     if (!source) return []
 
-    const rows = await productApi.getRelatedProducts(
-      source.category_id,
-      productId,
-      limit
-    )
+    const linkedIds = (source.product_category_links ?? []).map((l) => l.category_id)
+    const categoryIds =
+      linkedIds.length > 0 ? linkedIds : source.category_id ? [source.category_id] : []
+    const rows = await productApi.getRelatedProducts(categoryIds, productId, limit)
     return (rows ?? []).map(mapProduct)
   }
 

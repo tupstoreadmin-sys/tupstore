@@ -8,10 +8,15 @@ import {
   uploadProductImage,
   deleteProductImage,
   createProductImageRecord,
+  saveProductCategories,
   saveProductFeatures,
   saveProductSpecifications,
 } from '../api/adminProductApi'
-import { validateProductImport } from './productImportValidator'
+import {
+  validateProductImport,
+  EXISTING_CODE_MESSAGE,
+  DUPLICATE_CODE_IN_FILE_MESSAGE,
+} from './productImportValidator'
 import { buildImportReview } from './productImportReview'
 
 // STEP 3 — the actual Supabase-writing import engine. Every write here
@@ -24,26 +29,8 @@ import { buildImportReview } from './productImportReview'
 // Promise.all across products), per this step's explicit "prioritize
 // reliability over maximum speed" instruction.
 
-// Same algorithm as AdminProductFormPage.jsx's own slugify() and
-// productImportValidator.js's/productImportReview.js's own copies —
-// duplicated a fourth time here per this project's existing precedent
-// (see productImportValidator.js's own comment on this). The Excel
-// workbook's slug column, if any, is never read — see productImportParser.js,
-// which never even parses a "slug" column from the Products sheet.
-function slugify(value) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
-function normalizedKey(value) {
-  return (value ?? '').trim().toLowerCase()
-}
-
 // Same rules as adminProductApi.js's own (private) validateProductImageFile
-// — duplicated here for the same reason as slugify() above rather than
+// — duplicated here rather than
 // exporting a private helper out of an already-approved file.
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -63,25 +50,6 @@ function validateImageFile(file) {
 // asset's own `File.name` (which never carries a path).
 function basename(value) {
   return (value ?? '').trim().split(/[\\/]/).pop()
-}
-
-// Same matching shape as productImportValidator.js's buildCategoryLookup()
-// — duplicated rather than imported (that function is private to that
-// file). Every product being imported already passed this exact check
-// during validation; re-resolving here (against a freshly-fetched
-// categories list, per this step's "categories still exist" preflight
-// requirement) uses the identical rule, never a looser one.
-function buildCategoryLookup(categories) {
-  const map = new Map()
-  for (const category of categories) {
-    map.set(normalizedKey(category.name), category)
-    if (category.slug) map.set(normalizedKey(category.slug), category)
-  }
-  return map
-}
-
-function resolveCategoryId(categoryText, categoryLookup) {
-  return categoryLookup.get(normalizedKey(categoryText))?.id ?? null
 }
 
 // The exact string adminProductApi.js's createAdminProduct() throws for a
@@ -113,9 +81,8 @@ const EXISTING_PRODUCT_RACE_MESSAGE = 'A product with this slug, product code, o
  * @param {Set<number>} importableRowNumbers - rowNumbers the admin selected
  *   for this run (READY, plus WARNING rows only if warnings were
  *   explicitly acknowledged) — computed by the page from the Step 2 review
- * @param {Map<string, File>} imageAssetsByFilename
  */
-export async function preflightProductImport(parsed, importableRowNumbers, imageAssetsByFilename) {
+export async function preflightProductImport(parsed, importableRowNumbers) {
   let categories
   let existingProducts
   try {
@@ -142,35 +109,11 @@ export async function preflightProductImport(parsed, importableRowNumbers, image
   const nowExists = selectedRows.filter((row) => row.status === 'exists')
   const nowError = selectedRows.filter((row) => row.status === 'error')
 
-  const attemptRows = [...nowReady, ...nowWarning]
-  const categoryLookup = buildCategoryLookup(categories)
-
-  const imageFailures = []
-  const readyToWriteRows = []
-  for (const row of attemptRows) {
-    const filename = basename(row.product.main_image)
-    const file = filename ? imageAssetsByFilename.get(filename) : null
-    if (!file) {
-      imageFailures.push({
-        row,
-        reason: `Main image "${row.product.main_image || '(none)'}" was not found among the selected image files.`,
-      })
-      continue
-    }
-    const typeOrSizeError = validateImageFile(file)
-    if (typeOrSizeError) {
-      imageFailures.push({ row, reason: typeOrSizeError })
-      continue
-    }
-    readyToWriteRows.push(row)
-  }
-
   return {
     ok: true,
-    categories,
-    categoryLookup,
-    readyToWriteRows,
-    imageFailures,
+    // Images are optional: a product whose image file was not selected (or
+    // is unusable) is still created as a Draft - see importOneProduct().
+    readyToWriteRows: [...nowReady, ...nowWarning],
     reclassifiedExisting: nowExists,
     reclassifiedError: nowError,
   }
@@ -186,15 +129,17 @@ export async function preflightProductImport(parsed, importableRowNumbers, image
 // foreign keys — see db/schema.sql — no manual child-row cleanup needed).
 // Cleanup outcomes are always recorded on the returned failure, never
 // swallowed.
-async function importOneProduct(row, { categoryLookup, imageAssetsByFilename, onStage }) {
+async function importOneProduct(row, { imageAssetsByFilename, onStage }) {
   const { product, images, features, specifications } = row
   const uploadedUrls = []
+  const notes = []
   let productId = null
-  let stage = 'Category Resolution'
+  let stage = 'Product Creation'
 
   function fail(reason, extra = {}) {
     return {
       status: 'failed',
+      rowNumber: product.rowNumber,
       productCode: product.product_code,
       productName: product.name,
       stage,
@@ -209,21 +154,23 @@ async function importOneProduct(row, { categoryLookup, imageAssetsByFilename, on
   }
 
   try {
-    onStage?.('Resolving category')
-    const categoryId = resolveCategoryId(product.category, categoryLookup)
-    if (!categoryId) return fail(`Category "${product.category}" could not be resolved.`)
+    // Categories were already matched by the validator against the freshly
+    // fetched list - an unmapped name is never created, only reported.
+    const categoryIds = row.categoryIds
 
     stage = 'Product Creation'
     onStage?.('Creating product')
     let created
     try {
       created = await createAdminProduct({
-        slug: slugify(product.name),
+        slug: row.slug,
         name: product.name,
         product_code: product.product_code,
         sku: product.sku || null,
-        category_id: categoryId,
-        price: product.price,
+        category_id: categoryIds[0] ?? null,
+        // A blank price imports as 0 ("not priced yet"); publishing is
+        // blocked in the Admin form until a price above 0 is set.
+        price: product.price ?? 0,
         original_price: product.original_price ?? null,
         availability: product.availability || 'in_stock',
         featured: Boolean(product.featured),
@@ -233,11 +180,17 @@ async function importOneProduct(row, { categoryLookup, imageAssetsByFilename, on
         colors: product.colors ?? null,
         description: product.description || null,
         image: '',
+        // EVERY imported product starts as a Draft - never visible to
+        // customers until an admin completes it and publishes it from
+        // Admin Products (image, price > 0 and a category are enforced
+        // there at publish time).
+        status: 'draft',
       })
     } catch (error) {
       if (error.message === EXISTING_PRODUCT_RACE_MESSAGE) {
         return {
           status: 'skipped-existing',
+          rowNumber: product.rowNumber,
           productCode: product.product_code,
           productName: product.name,
           reason: 'Another session created a product with this code/slug during this import (race condition).',
@@ -247,59 +200,80 @@ async function importOneProduct(row, { categoryLookup, imageAssetsByFilename, on
     }
     productId = created.id
 
-    stage = 'Primary Image Upload'
-    onStage?.('Uploading main image')
-    const mainImageFile = imageAssetsByFilename.get(basename(product.main_image))
-    const primaryUrl = await uploadProductImage(mainImageFile, productId)
-    uploadedUrls.push(primaryUrl)
-
-    stage = 'Primary Image Record'
-    await createProductImageRecord({
-      productId,
-      url: primaryUrl,
-      altText: '',
-      sortOrder: 0,
-      isPrimary: true,
-    })
-
-    stage = 'Gallery Images'
-    onStage?.('Uploading gallery images')
-    const mainImageBasename = basename(product.main_image)
-    const galleryRows = images.filter((img) => basename(img.image_file) !== mainImageBasename)
-    let gallerySortOrder = 1
-    for (const imgRow of galleryRows) {
-      const file = imageAssetsByFilename.get(basename(imgRow.image_file))
-      // A missing or invalid gallery image is non-fatal — the main image
-      // is the only image this step requires (see Step 3's own "IMAGE
-      // VALIDATION BEFORE WRITING" section, which only names the main
-      // image); a gallery row that can't be fulfilled is simply skipped.
-      if (!file || validateImageFile(file)) continue
-      const url = await uploadProductImage(file, productId)
-      uploadedUrls.push(url)
-      await createProductImageRecord({
-        productId,
-        url,
-        altText: imgRow.alt_text || '',
-        sortOrder: imgRow.sort_order ?? gallerySortOrder,
-        isPrimary: false,
-      })
-      gallerySortOrder++
+    // Storefront category listings read product_categories (migration
+    // 0026), not products.category_id. Skipped entirely for a product with
+    // no matched category (it stays an uncategorised Draft).
+    if (categoryIds.length > 0) {
+      stage = 'Category Link'
+      await saveProductCategories(productId, categoryIds)
     }
 
-    stage = 'Set Primary Image'
-    await updateAdminProduct(productId, { image: primaryUrl })
+    // Images are optional. Work out which of the referenced files were
+    // actually selected and usable; the first becomes the primary image.
+    const mainImageBasename = basename(product.main_image)
+    const wanted = []
+    if (mainImageBasename) {
+      const file = imageAssetsByFilename.get(mainImageBasename)
+      if (!file) notes.push(`Main image "${mainImageBasename}" was not among the selected image files.`)
+      else if (validateImageFile(file)) notes.push(`Main image "${mainImageBasename}": ${validateImageFile(file)}`)
+      else wanted.push({ file, altText: '' })
+    }
+    for (const imgRow of images) {
+      const name = basename(imgRow.image_file)
+      if (!name || name === mainImageBasename) continue
+      const file = imageAssetsByFilename.get(name)
+      if (!file || validateImageFile(file)) {
+        notes.push(`Gallery image "${name}" was skipped (not selected or not a valid image).`)
+        continue
+      }
+      wanted.push({ file, altText: imgRow.alt_text || '', sortOrder: imgRow.sort_order })
+    }
+
+    if (wanted.length > 0) {
+      stage = 'Primary Image Upload'
+      onStage?.('Uploading images')
+      const primaryUrl = await uploadProductImage(wanted[0].file, productId)
+      uploadedUrls.push(primaryUrl)
+
+      stage = 'Primary Image Record'
+      await createProductImageRecord({
+        productId,
+        url: primaryUrl,
+        altText: wanted[0].altText,
+        sortOrder: 0,
+        isPrimary: true,
+      })
+
+      stage = 'Gallery Images'
+      let gallerySortOrder = 1
+      for (const item of wanted.slice(1)) {
+        const url = await uploadProductImage(item.file, productId)
+        uploadedUrls.push(url)
+        await createProductImageRecord({
+          productId,
+          url,
+          altText: item.altText,
+          sortOrder: item.sortOrder ?? gallerySortOrder,
+          isPrimary: false,
+        })
+        gallerySortOrder++
+      }
+
+      stage = 'Set Primary Image'
+      await updateAdminProduct(productId, { image: primaryUrl })
+    }
 
     stage = 'Features'
     onStage?.('Saving features')
     const featureLabels = features.map((f) => f.label).filter(Boolean)
-    await saveProductFeatures(productId, featureLabels)
+    if (featureLabels.length > 0) await saveProductFeatures(productId, featureLabels)
 
     stage = 'Specifications'
     onStage?.('Saving specifications')
     const specEntries = specifications
       .filter((s) => s.spec_key && s.spec_value)
       .map((s) => ({ key: s.spec_key, value: s.spec_value }))
-    await saveProductSpecifications(productId, specEntries)
+    if (specEntries.length > 0) await saveProductSpecifications(productId, specEntries)
 
     stage = 'Verification'
     onStage?.('Verifying')
@@ -308,12 +282,18 @@ async function importOneProduct(row, { categoryLookup, imageAssetsByFilename, on
 
     return {
       status: 'created',
+      rowNumber: product.rowNumber,
       productCode: product.product_code,
       productName: product.name,
       productId,
       imagesUploaded: uploadedUrls.length,
       featuresCreated: featureLabels.length,
       specificationsCreated: specEntries.length,
+      categoryNames: row.categoryNames,
+      unmappedCategories: row.unmappedCategories,
+      hasPrice: (product.price ?? 0) > 0,
+      hasImage: uploadedUrls.length > 0,
+      notes,
     }
   } catch (error) {
     // KNOWN LIMITATION (found during Step 3 QA, see
@@ -355,15 +335,37 @@ async function importOneProduct(row, { categoryLookup, imageAssetsByFilename, on
   }
 }
 
+function describeSkippedRow(row) {
+  const reasons = row.errors.map((f) => f.message)
+  const missing = reasons.some((m) => m === 'Missing product_code' || m === 'Missing product name')
+  const duplicate = reasons.some(
+    (m) => m === DUPLICATE_CODE_IN_FILE_MESSAGE || m === EXISTING_CODE_MESSAGE
+  )
+  return {
+    rowNumber: row.product.rowNumber,
+    productCode: row.product.product_code,
+    productName: row.product.name,
+    reasons,
+    reason: reasons.length > 0 ? reasons.join('; ') : 'Row has validation errors and was never attempted.',
+    // missing > duplicate > other, so a row is counted under one heading.
+    kind: missing ? 'missing' : duplicate ? 'duplicate' : 'other',
+  }
+}
+
 /**
  * Runs the full import: preflight, then strictly sequential per-product
  * writes. Never called with an empty/unvalidated workbook — the caller
  * (AdminProductImportPage.jsx) only invokes this after its own Step 2
  * review and an explicit admin confirmation.
  *
+ * Every created product is a Draft. Rows missing Name or Product Code,
+ * rows whose Product Code already exists (in Supabase or repeated in the
+ * file) and any other invalid row are skipped and reported with their
+ * Excel row number; the remaining valid rows are still imported.
+ *
  * @param {object} parsed
  * @param {Set<number>} importableRowNumbers
- * @param {Map<string, File>} imageAssetsByFilename
+ * @param {Map<string, File>} imageAssetsByFilename - optional; may be empty
  * @param {(progress: object) => void} [onProgress]
  * @param {object} [originalReview] - the Step 2 review computed BEFORE this
  *   call (buildImportReview() output) — its EXISTS/ERROR rows were never
@@ -381,47 +383,33 @@ export async function runProductImport(
   originalReview
 ) {
   onProgress?.({ phase: 'preflight' })
-  const preflight = await preflightProductImport(parsed, importableRowNumbers, imageAssetsByFilename)
+  const preflight = await preflightProductImport(parsed, importableRowNumbers)
   if (!preflight.ok) {
     return { aborted: true, reason: preflight.reason }
   }
 
-  const { categoryLookup, readyToWriteRows, imageFailures, reclassifiedExisting, reclassifiedError } = preflight
+  const { readyToWriteRows, reclassifiedExisting, reclassifiedError } = preflight
 
   const created = []
-  const failed = imageFailures.map(({ row, reason }) => ({
-    status: 'failed',
-    productCode: row.product.product_code,
-    productName: row.product.name,
-    stage: 'Preflight — Main Image',
-    reason,
-    productRowCreated: false,
-    imagesUploadedCount: 0,
-    cleanup: null,
-  }))
+  const failed = []
   const skippedExisting = [
     ...(originalReview?.rows.filter((r) => r.status === 'exists') ?? []).map((row) => ({
+      rowNumber: row.product.rowNumber,
       productCode: row.product.product_code,
       productName: row.product.name,
-      reason: 'Product code already exists in Supabase.',
+      reason: 'Duplicate Product Code — already exists in the catalogue. Skipped, not modified.',
     })),
     ...reclassifiedExisting.map((row) => ({
+      rowNumber: row.product.rowNumber,
       productCode: row.product.product_code,
       productName: row.product.name,
-      reason: 'Product code already exists in Supabase (detected during import preflight).',
+      reason:
+        'Duplicate Product Code — already exists in the catalogue (detected during import preflight). Skipped, not modified.',
     })),
   ]
   const skippedErrors = [
-    ...(originalReview?.rows.filter((r) => r.status === 'error') ?? []).map((row) => ({
-      productCode: row.product.product_code,
-      productName: row.product.name,
-      reason: 'Row has validation errors and was never attempted.',
-    })),
-    ...reclassifiedError.map((row) => ({
-      productCode: row.product.product_code,
-      productName: row.product.name,
-      reason: 'Row failed re-validation during import preflight.',
-    })),
+    ...(originalReview?.rows.filter((r) => r.status === 'error') ?? []).map(describeSkippedRow),
+    ...reclassifiedError.map(describeSkippedRow),
   ]
 
   const total = readyToWriteRows.length
@@ -438,7 +426,6 @@ export async function runProductImport(
     })
 
     const outcome = await importOneProduct(row, {
-      categoryLookup,
       imageAssetsByFilename,
       onStage: (stageLabel) => {
         onProgress?.({
@@ -458,12 +445,30 @@ export async function runProductImport(
     else failed.push(outcome)
   }
 
+  // Report-friendly breakdown (the headline numbers on the result screen).
+  const duplicateProductCodes = [
+    ...skippedExisting,
+    ...skippedErrors.filter((item) => item.kind === 'duplicate'),
+  ]
+  const missingRequired = skippedErrors.filter((item) => item.kind === 'missing')
+  const unmappedCategories = created
+    .filter((item) => item.unmappedCategories.length > 0)
+    .map((item) => ({
+      rowNumber: item.rowNumber,
+      productCode: item.productCode,
+      productName: item.productName,
+      unmapped: item.unmappedCategories,
+    }))
+
   return {
     aborted: false,
     created,
     failed,
     skippedExisting,
     skippedErrors,
+    duplicateProductCodes,
+    missingRequired,
+    unmappedCategories,
     totals: {
       imagesUploaded: created.reduce((sum, r) => sum + r.imagesUploaded, 0),
       featuresCreated: created.reduce((sum, r) => sum + r.featuresCreated, 0),

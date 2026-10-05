@@ -5,6 +5,8 @@
 // PromotionsRepository.js's own JSDoc typedefs. Mirrors
 // services/products/mappers/productMapper.js's role for this feature.
 
+import { getProductImageUrl } from '../../../utils/imageUrl'
+
 function sortByPromotionProductOrder(rows) {
   return [...rows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 }
@@ -23,7 +25,7 @@ function mapPromotionProduct(row) {
     id: product.id,
     name: product.name,
     price: product.price,
-    image: product.image,
+    image: getProductImageUrl(product.image),
     slug: product.slug,
     capacity: product.capacity ?? undefined,
     colors: product.colors ?? undefined,

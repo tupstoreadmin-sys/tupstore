@@ -42,7 +42,8 @@ export function ImportConfirmDialog({
         </div>
 
         <p className="mt-4 text-xs text-slate-400">
-          This will write directly to Supabase. This cannot be undone automatically.
+          Every imported product is created as a Draft (not visible to customers). This will write
+          directly to Supabase and cannot be undone automatically.
         </p>
 
         <div className="mt-6 flex justify-end gap-2">

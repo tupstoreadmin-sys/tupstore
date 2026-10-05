@@ -19,8 +19,9 @@ import { supabase } from '../../lib/supabase'
 const PRODUCT_SELECT = `
   id, slug, name, image, badge, featured, category_id, price, original_price,
   rating, capacity, availability, description, colors, product_code, sku,
-  created_at, updated_at,
+  status, created_at, updated_at,
   categories ( name ),
+  product_categories ( id, category_id ),
   product_images ( id, url, alt_text, sort_order, is_primary, created_at ),
   product_features ( id, label, sort_order ),
   product_specifications ( id, spec_key, spec_value, sort_order )
@@ -42,6 +43,9 @@ const PRODUCT_BASE_FIELDS = [
   'colors',
   'product_code',
   'sku',
+  // 'draft' | 'published' (db/migrations/0026). The database default for a
+  // new product is 'draft'; callers that omit it get that default.
+  'status',
 ]
 
 // Only copies keys the caller actually provided (partial-safe for
@@ -149,6 +153,60 @@ export async function getAdminProductCategories() {
     .order('sort_order', { ascending: true })
   if (error) throw error
   return data ?? []
+}
+
+// ── Product ↔ Category links (product_categories, migration 0026) ───────
+
+// Makes the product's category links exactly equal to `categoryIds`
+// (de-duplicated). Diff-based rather than delete-all/re-insert: new links are
+// added BEFORE stale ones are removed, so a failure part-way never leaves a
+// product with fewer categories than it started with and never drops the
+// ones that didn't change.
+//
+// products.category_id is kept as the product's legacy "primary" category
+// (used by single-category storefront UI — see migration 0026). The current
+// primary is preserved if it's still selected; otherwise the first selected
+// category becomes primary; with no categories it is cleared to NULL.
+export async function saveProductCategories(productId, categoryIds) {
+  const wanted = [...new Set((categoryIds ?? []).filter(Boolean))]
+
+  const [{ data: existing, error: existingError }, { data: product, error: productError }] =
+    await Promise.all([
+      supabase.from('product_categories').select('id, category_id').eq('product_id', productId),
+      supabase.from('products').select('category_id').eq('id', productId).single(),
+    ])
+  if (existingError) throw existingError
+  if (productError) throw productError
+
+  const existingCategoryIds = new Set(existing.map((row) => row.category_id))
+  const toAdd = wanted.filter((id) => !existingCategoryIds.has(id))
+  const toRemove = existing.filter((row) => !wanted.includes(row.category_id))
+
+  if (toAdd.length > 0) {
+    const { error } = await supabase
+      .from('product_categories')
+      .insert(toAdd.map((categoryId) => ({ product_id: productId, category_id: categoryId })))
+    if (error) throw error
+  }
+
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from('product_categories')
+      .delete()
+      .in('id', toRemove.map((row) => row.id))
+    if (error) throw error
+  }
+
+  const nextPrimary = wanted.includes(product.category_id)
+    ? product.category_id
+    : (wanted[0] ?? null)
+  if (nextPrimary !== product.category_id) {
+    const { error } = await supabase
+      .from('products')
+      .update({ category_id: nextPrimary })
+      .eq('id', productId)
+    if (error) throw error
+  }
 }
 
 // ── Images ──────────────────────────────────────────────────────────────

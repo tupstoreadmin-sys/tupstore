@@ -25,6 +25,14 @@ function formatInr(amount) {
   return `₹${Number(amount).toLocaleString('en-IN')}`
 }
 
+// product_categories is the source of truth; products.category_id is only a
+// legacy primary-category fallback for a product with no link rows.
+function linkedCategoryIds(product) {
+  const linked = (product.product_categories ?? []).map((link) => link.category_id)
+  if (linked.length > 0) return linked
+  return product.category_id ? [product.category_id] : []
+}
+
 // Real Product list, reading live production Supabase data as the
 // signed-in admin — mirrors AdminCategoriesPage.jsx's structure and
 // states exactly (loading/unavailable/error/empty/ready), extended with
@@ -47,6 +55,7 @@ export default function AdminProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [availabilityFilter, setAvailabilityFilter] = useState('all')
   const [featuredFilter, setFeaturedFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
     let cancelled = false
@@ -73,11 +82,19 @@ export default function AdminProductsPage() {
     }
   }, [])
 
+  const categoryNameById = useMemo(
+    () => new Map(state.categories.map((category) => [category.id, category.name])),
+    [state.categories]
+  )
+
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase()
     return state.items.filter((product) => {
       if (query && !product.name.toLowerCase().includes(query)) return false
-      if (categoryFilter !== 'all' && product.category_id !== categoryFilter) {
+      if (
+        categoryFilter !== 'all' &&
+        !linkedCategoryIds(product).includes(categoryFilter)
+      ) {
         return false
       }
       if (
@@ -88,21 +105,31 @@ export default function AdminProductsPage() {
       }
       if (featuredFilter === 'featured' && !product.featured) return false
       if (featuredFilter === 'not_featured' && product.featured) return false
+      if (statusFilter !== 'all' && product.status !== statusFilter) return false
       return true
     })
-  }, [state.items, search, categoryFilter, availabilityFilter, featuredFilter])
+  }, [
+    state.items,
+    search,
+    categoryFilter,
+    availabilityFilter,
+    featuredFilter,
+    statusFilter,
+  ])
 
   const hasActiveFilters =
     search.trim() !== '' ||
     categoryFilter !== 'all' ||
     availabilityFilter !== 'all' ||
-    featuredFilter !== 'all'
+    featuredFilter !== 'all' ||
+    statusFilter !== 'all'
 
   const handleClearFilters = () => {
     setSearch('')
     setCategoryFilter('all')
     setAvailabilityFilter('all')
     setFeaturedFilter('all')
+    setStatusFilter('all')
   }
 
   const handleDelete = async (product) => {
@@ -133,7 +160,8 @@ export default function AdminProductsPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Products</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Manage the products shown on the storefront.
+            Manage the products shown on the storefront. Only Published products
+            are visible to customers.
           </p>
         </div>
         {state.status === 'ready' && (
@@ -209,6 +237,15 @@ export default function AdminProductsPage() {
             <option value="featured">Featured Only</option>
             <option value="not_featured">Not Featured</option>
           </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 sm:w-40"
+          >
+            <option value="all">All Statuses</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+          </select>
           {hasActiveFilters && (
             <button
               type="button"
@@ -274,7 +311,7 @@ export default function AdminProductsPage() {
 
       {state.status === 'ready' && filteredProducts.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="w-full min-w-[860px] text-left text-sm">
+          <table className="w-full min-w-[940px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-4 py-3 font-medium">Image</th>
@@ -283,6 +320,7 @@ export default function AdminProductsPage() {
                 <th className="px-4 py-3 font-medium">SKU</th>
                 <th className="px-4 py-3 font-medium">Category</th>
                 <th className="px-4 py-3 font-medium">Price</th>
+                <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Availability</th>
                 <th className="px-4 py-3 font-medium">Featured</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
@@ -295,11 +333,17 @@ export default function AdminProductsPage() {
                   className="border-b border-slate-100 last:border-0"
                 >
                   <td className="px-4 py-3">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="h-12 w-12 rounded-md border border-slate-200 object-cover"
-                    />
+                    {product.image ? (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="h-12 w-12 rounded-md border border-slate-200 object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 text-center text-[10px] leading-tight text-slate-400">
+                        No image
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-900">
                     {product.name}
@@ -311,10 +355,24 @@ export default function AdminProductsPage() {
                     {product.sku || '—'}
                   </td>
                   <td className="px-4 py-3 text-slate-500">
-                    {product.categories?.name || '—'}
+                    {linkedCategoryIds(product)
+                      .map((id) => categoryNameById.get(id))
+                      .filter(Boolean)
+                      .join(', ') || '—'}
                   </td>
                   <td className="px-4 py-3 text-slate-900">
                     {formatInr(product.price)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        product.status === 'published'
+                          ? 'bg-green-50 text-green-700'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {product.status === 'published' ? 'Published' : 'Draft'}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <span

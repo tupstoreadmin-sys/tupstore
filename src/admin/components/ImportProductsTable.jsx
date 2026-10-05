@@ -20,7 +20,7 @@ function formatInr(amount) {
 
 function ImageCell({ product }) {
   if (!product.main_image) {
-    return <span className="text-xs font-medium text-red-600">Missing Image</span>
+    return <span className="text-xs text-slate-400">No image</span>
   }
   return (
     <div className="flex items-center gap-2">

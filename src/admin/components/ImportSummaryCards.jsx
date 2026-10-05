@@ -23,7 +23,11 @@ export function ImportSummaryCards({ summary }) {
       <Card label="Products With Errors" value={summary.errorCount} tone="text-red-600" />
       <Card label="Products With Warnings" value={summary.warningCount} tone="text-amber-600" />
       <Card label="Existing Product Codes" value={summary.existingCodeCount} tone="text-slate-600" />
-      <Card label="Existing Slugs" value={summary.existingSlugCount} tone="text-slate-600" />
+      <Card
+        label="Unmapped Categories"
+        value={summary.unmappedCategoryCount}
+        tone="text-slate-600"
+      />
     </div>
   )
 }

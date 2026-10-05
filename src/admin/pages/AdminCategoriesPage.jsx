@@ -4,6 +4,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  saveCategoryOrder,
 } from '../api/adminCategoryApi'
 import { CategoryFormModal } from '../components/CategoryFormModal'
 import { AdminBackLink } from '../components/AdminBackLink'
@@ -23,6 +24,11 @@ export default function AdminCategoriesPage() {
   const [modal, setModal] = useState(null) // null | { mode: 'add' } | { mode: 'edit', category }
   const [deletingId, setDeletingId] = useState(null)
   const [banner, setBanner] = useState(null) // { type: 'success' | 'error', text }
+  // Working order (array of category ids) while the admin is dragging; the
+  // saved order is state.items. Nothing is written until "Save Order".
+  const [order, setOrder] = useState([])
+  const [draggingId, setDraggingId] = useState(null)
+  const [savingOrder, setSavingOrder] = useState(false)
 
   // Inline .then/.catch (matching src/hooks/useAsync.js's established
   // pattern) rather than an async function called from the effect body —
@@ -33,7 +39,10 @@ export default function AdminCategoriesPage() {
 
     getCategories()
       .then((items) => {
-        if (!cancelled) setState({ status: 'ready', items })
+        if (!cancelled) {
+          setState({ status: 'ready', items })
+          setOrder(items.map((c) => c.id))
+        }
       })
       .catch((error) => {
         console.error('[AdminCategories] load failed:', error.message)
@@ -52,12 +61,8 @@ export default function AdminCategoriesPage() {
 
   const handleCreate = async (values) => {
     const created = await createCategory(values)
-    setState((s) => ({
-      ...s,
-      items: [...s.items, created].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      ),
-    }))
+    setState((s) => ({ ...s, items: [...s.items, created] }))
+    setOrder((o) => [...o, created.id])
     setModal(null)
     setBanner({ type: 'success', text: `"${created.name}" was added.` })
   }
@@ -66,9 +71,7 @@ export default function AdminCategoriesPage() {
     const updated = await updateCategory(modal.category.id, values)
     setState((s) => ({
       ...s,
-      items: s.items
-        .map((c) => (c.id === updated.id ? updated : c))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+      items: s.items.map((c) => (c.id === updated.id ? updated : c)),
     }))
     setModal(null)
     setBanner({ type: 'success', text: `"${updated.name}" was updated.` })
@@ -88,11 +91,59 @@ export default function AdminCategoriesPage() {
         ...s,
         items: s.items.filter((c) => c.id !== category.id),
       }))
+      setOrder((o) => o.filter((id) => id !== category.id))
       setBanner({ type: 'success', text: `"${category.name}" was deleted.` })
     } catch (error) {
       setBanner({ type: 'error', text: error.message })
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const itemsById = new Map(state.items.map((c) => [c.id, c]))
+  const orderedItems = order.map((id) => itemsById.get(id)).filter(Boolean)
+  const orderDirty =
+    orderedItems.length === state.items.length &&
+    orderedItems.some((c, index) => c.id !== state.items[index]?.id)
+
+  // Dragging over a row moves the dragged category into that row's slot.
+  const moveCategory = (fromId, toId) => {
+    if (fromId === toId) return
+    setOrder((o) => {
+      const fromIndex = o.indexOf(fromId)
+      const toIndex = o.indexOf(toId)
+      if (fromIndex === -1 || toIndex === -1) return o
+      const next = o.filter((id) => id !== fromId)
+      next.splice(toIndex, 0, fromId)
+      return next
+    })
+  }
+
+  const shiftCategory = (id, delta) => {
+    setOrder((o) => {
+      const index = o.indexOf(id)
+      const target = index + delta
+      if (index === -1 || target < 0 || target >= o.length) return o
+      const next = [...o]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
+  const handleSaveOrder = async () => {
+    setSavingOrder(true)
+    setBanner(null)
+    try {
+      await saveCategoryOrder(order)
+      // Re-read from the database so what is shown is what was persisted.
+      const fresh = await getCategories()
+      setState({ status: 'ready', items: fresh })
+      setOrder(fresh.map((c) => c.id))
+      setBanner({ type: 'success', text: 'Category order saved.' })
+    } catch (error) {
+      setBanner({ type: 'error', text: error.message || 'Could not save the order.' })
+    } finally {
+      setSavingOrder(false)
     }
   }
 
@@ -104,17 +155,41 @@ export default function AdminCategoriesPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Categories</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Manage the product categories shown on the storefront.
+            Manage the product categories shown on the storefront. Drag the
+            handle to set the order they appear in, then click Save Order.
           </p>
         </div>
         {state.status === 'ready' && (
-          <button
-            type="button"
-            onClick={() => setModal({ mode: 'add' })}
-            className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-          >
-            Add Category
-          </button>
+          <div className="flex gap-2">
+            {orderDirty && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setOrder(state.items.map((c) => c.id))}
+                  disabled={savingOrder}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveOrder}
+                  disabled={savingOrder}
+                  className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {savingOrder ? 'Saving…' : 'Save Order'}
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => setModal({ mode: 'add' })}
+              disabled={savingOrder}
+              className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Add Category
+            </button>
+          </div>
         )}
       </div>
 
@@ -171,28 +246,76 @@ export default function AdminCategoriesPage() {
       )}
 
       {state.status === 'ready' && state.items.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {state.items.map((category) => (
+        <div className="flex flex-col gap-2">
+          {orderDirty && (
+            <p className="text-xs text-amber-700">
+              The order has changed but is not saved yet.
+            </p>
+          )}
+          {orderedItems.map((category, index) => (
             <div
               key={category.id}
-              className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4"
+              draggable={!savingOrder}
+              onDragStart={(e) => {
+                setDraggingId(category.id)
+                e.dataTransfer.effectAllowed = 'move'
+              }}
+              onDragOver={(e) => {
+                if (!draggingId) return
+                e.preventDefault()
+                if (draggingId !== category.id) moveCategory(draggingId, category.id)
+              }}
+              onDragEnd={() => setDraggingId(null)}
+              className={`flex items-center gap-3 rounded-lg border bg-white p-3 ${
+                draggingId === category.id
+                  ? 'border-slate-400 opacity-60'
+                  : 'border-slate-200'
+              }`}
             >
-              <div className="min-w-0">
+              <span
+                className="cursor-grab select-none px-1 text-lg leading-none text-slate-400"
+                aria-hidden="true"
+                title="Drag to reorder"
+              >
+                ☰
+              </span>
+              <span className="w-6 text-right text-xs font-medium text-slate-400">
+                {index + 1}
+              </span>
+              <div className="min-w-0 flex-1">
                 <h3 className="truncate text-sm font-semibold text-slate-900">
                   {category.name}
                 </h3>
                 <p className="truncate text-xs text-slate-400">
                   /{category.slug}
+                  {category.tagline ? ` · ${category.tagline}` : ''}
                 </p>
               </div>
-              {category.tagline && (
-                <p className="text-sm text-slate-500">{category.tagline}</p>
-              )}
-              <div className="mt-auto flex gap-2 pt-2">
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => shiftCategory(category.id, -1)}
+                  disabled={savingOrder || index === 0}
+                  aria-label={`Move ${category.name} up`}
+                  className="rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={() => shiftCategory(category.id, 1)}
+                  disabled={savingOrder || index === orderedItems.length - 1}
+                  aria-label={`Move ${category.name} down`}
+                  className="rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-30"
+                >
+                  ▼
+                </button>
+              </div>
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setModal({ mode: 'edit', category })}
-                  className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Edit
                 </button>
@@ -200,7 +323,7 @@ export default function AdminCategoriesPage() {
                   type="button"
                   onClick={() => handleDelete(category)}
                   disabled={deletingId === category.id}
-                  className="flex-1 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
                 >
                   {deletingId === category.id ? 'Deleting…' : 'Delete'}
                 </button>

@@ -19,9 +19,15 @@ const ACTIVE_PROMOTIONS_SELECT = `
   is_active, sort_order,
   promotion_products (
     sort_order,
-    products ( id, name, price, image, slug, capacity, colors, availability, product_code )
+    products!inner ( id, name, price, image, slug, capacity, colors, availability, product_code )
   )
 `
+
+// Tagged products that are still drafts are dropped from the promotion
+// (the `!inner` embed above removes the join row; the promotion itself is
+// unaffected). RLS already hides drafts from `anon`; this also covers a
+// signed-in admin browsing the storefront. See db/migrations/0026.
+const PUBLISHED_TAGGED_PRODUCTS = 'promotion_products.products.status'
 
 // Matches src/features/home/PromotionStrip.jsx's existing hard limit of 4
 // cards (see its own visibleCards/maxIndex logic) — this is the same
@@ -40,6 +46,7 @@ export async function getActivePromotions() {
     .from('promotions')
     .select(ACTIVE_PROMOTIONS_SELECT)
     .eq('is_active', true)
+    .eq(PUBLISHED_TAGGED_PRODUCTS, 'published')
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false })
     .limit(FEATURED_HIGHLIGHTS_LIMIT)
@@ -62,6 +69,7 @@ export async function getPromotionBySlug(slug) {
     .select(ACTIVE_PROMOTIONS_SELECT)
     .eq('slug', slug)
     .eq('is_active', true)
+    .eq(PUBLISHED_TAGGED_PRODUCTS, 'published')
     .maybeSingle()
 
   handleApiError(error, 'getPromotionBySlug')

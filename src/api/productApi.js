@@ -13,6 +13,7 @@ import { handleApiError } from '../utils/handleApiError'
 const PRODUCT_SELECT = `
   *,
   categories ( name, slug ),
+  product_category_links:product_categories ( category_id ),
   product_features ( label, sort_order ),
   product_specifications ( spec_key, spec_value, sort_order ),
   product_images ( url, alt_text, sort_order, is_primary )
@@ -38,8 +39,30 @@ function escapeOrFilterValue(value) {
 /**
  * @param {import('../services/products/ProductRepository').ProductFilters} [filters]
  */
+// A product can belong to several categories (product_categories). Filtering
+// by category therefore uses an inner-joined embed under its own alias —
+// separate from the always-present `product_category_links` embed in
+// PRODUCT_SELECT, which must keep returning ALL of a product's categories,
+// not just the filtered one. `!inner` drops products with no matching link,
+// and each product still comes back exactly once (the unique
+// (product_id, category_id) constraint makes duplicate links impossible).
+const CATEGORY_FILTER_EMBED = 'category_filter:product_categories!inner ( category_id )'
+
+// Draft products (bulk-imported / still being completed in Admin) must never
+// reach customers. RLS already limits `anon` to published products
+// (db/migrations/0026), but a signed-in admin browsing the storefront in the
+// same browser uses the admin read policy and WOULD see drafts — so every
+// public product query also filters explicitly. Two layers on purpose.
+const PUBLISHED = 'published'
+
 export async function getProducts({ search, category, priceMax, inStockOnly } = {}) {
-  let query = supabase.from('products').select(PRODUCT_SELECT)
+  const filterByCategory = Boolean(category) && category !== 'all'
+  let query = supabase
+    .from('products')
+    .select(
+      filterByCategory ? `${PRODUCT_SELECT}, ${CATEGORY_FILTER_EMBED}` : PRODUCT_SELECT
+    )
+    .eq('status', PUBLISHED)
 
   if (search) {
     const escaped = escapeOrFilterValue(search)
@@ -60,12 +83,21 @@ export async function getProducts({ search, category, priceMax, inStockOnly } = 
     handleApiError(categoryError, 'getProducts (category name search)')
 
     if (matchingCategories && matchingCategories.length > 0) {
-      orParts.push(`category_id.in.(${matchingCategories.map((c) => c.id).join(',')})`)
+      // Products are listed under a category via product_categories, so
+      // resolve the matching categories to their linked product ids.
+      const { data: links, error: linkError } = await supabase
+        .from('product_categories')
+        .select('product_id')
+        .in('category_id', matchingCategories.map((c) => c.id))
+      handleApiError(linkError, 'getProducts (category name search links)')
+
+      const productIds = [...new Set((links ?? []).map((l) => l.product_id))]
+      if (productIds.length > 0) orParts.push(`id.in.(${productIds.join(',')})`)
     }
 
     query = query.or(orParts.join(','))
   }
-  if (category && category !== 'all') query = query.eq('category_id', category)
+  if (filterByCategory) query = query.eq('category_filter.category_id', category)
   if (typeof priceMax === 'number' && priceMax < PRICE_SLIDER_MAX) {
     query = query.lte('price', priceMax)
   }
@@ -88,6 +120,7 @@ export async function getFeaturedProducts(limit = 4) {
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('featured', true)
+    .eq('status', PUBLISHED)
     .order('updated_at', { ascending: false })
     .limit(limit)
 
@@ -100,6 +133,8 @@ export async function getCategories() {
     .from('categories')
     .select('*')
     .order('sort_order', { ascending: true })
+    // Stable tiebreaker only; the admin-defined sort_order decides the order.
+    .order('name', { ascending: true })
   handleApiError(error, 'getCategories')
   return data
 }
@@ -109,6 +144,7 @@ export async function getProductById(id) {
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('id', id)
+    .eq('status', PUBLISHED)
     .maybeSingle()
 
   handleApiError(error, 'getProductById')
@@ -120,17 +156,21 @@ export async function getProductBySlug(slug) {
     .from('products')
     .select(PRODUCT_SELECT)
     .eq('slug', slug)
+    .eq('status', PUBLISHED)
     .maybeSingle()
 
   handleApiError(error, 'getProductBySlug')
   return data
 }
 
-export async function getRelatedProducts(categoryId, excludeId, limit = 4) {
+// Related = shares at least one category with the source product.
+export async function getRelatedProducts(categoryIds, excludeId, limit = 4) {
+  if (!categoryIds || categoryIds.length === 0) return []
   const { data, error } = await supabase
     .from('products')
-    .select(PRODUCT_SELECT)
-    .eq('category_id', categoryId)
+    .select(`${PRODUCT_SELECT}, ${CATEGORY_FILTER_EMBED}`)
+    .in('category_filter.category_id', categoryIds)
+    .eq('status', PUBLISHED)
     .neq('id', excludeId)
     .limit(limit)
 
@@ -144,6 +184,7 @@ export async function searchProducts(query) {
     .from('products')
     .select(PRODUCT_SELECT)
     .ilike('name', `%${query}%`)
+    .eq('status', PUBLISHED)
 
   handleApiError(error, 'searchProducts')
   return data

@@ -1,4 +1,4 @@
-import { getImageUrl } from '../../../utils/imageUrl'
+import { getImageUrl, getProductImageUrl } from '../../../utils/imageUrl'
 
 /** @typedef {import('../../../models/Product').Product} Product */
 
@@ -54,7 +54,9 @@ function mapAvailability(value) {
  * @returns {Product}
  */
 export function mapProduct(row) {
-  const image = getImageUrl(row.image)
+  // Empty products.image (created via bulk import, image added later) falls
+  // back to the shared placeholder — see utils/imageUrl.js.
+  const image = getProductImageUrl(row.image)
 
   return {
     id: row.id,
@@ -64,7 +66,11 @@ export function mapProduct(row) {
     images: mapImages(row.product_images, image),
     badge: row.badge ?? undefined,
     featured: Boolean(row.featured),
-    category: row.category_id,
+    category: row.category_id ?? undefined,
+    // Every category this product is listed under (product_categories).
+    // `category` above stays the legacy primary one, still used for the
+    // single-category UI (Product Detail label/banner).
+    categoryIds: (row.product_category_links ?? []).map((link) => link.category_id),
     price: row.price,
     originalPrice: row.original_price ?? undefined,
     rating: row.rating,

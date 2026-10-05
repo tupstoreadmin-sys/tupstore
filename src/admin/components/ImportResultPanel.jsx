@@ -48,7 +48,8 @@ function SkippedCard({ item, reasonLabel }) {
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
       <p className="font-semibold text-slate-700">
-        {item.productCode} — {item.productName}
+        {item.rowNumber ? `Row ${item.rowNumber} · ` : ''}
+        {item.productCode || '(no product code)'} — {item.productName || '(no name)'}
       </p>
       <p className="text-xs text-slate-500">{reasonLabel}</p>
     </div>
@@ -61,28 +62,48 @@ function SkippedCard({ item, reasonLabel }) {
  * @param {() => void} props.onReturnToReview
  */
 export function ImportResultPanel({ result, onReturnToReview }) {
-  const { created, failed, skippedExisting, skippedErrors, totals } = result
+  const {
+    created,
+    failed,
+    skippedExisting,
+    skippedErrors,
+    duplicateProductCodes = [],
+    missingRequired = [],
+    unmappedCategories = [],
+    totals,
+  } = result
+  const otherSkipped = skippedErrors.filter((item) => item.kind === 'other')
+  const skippedTotal = skippedExisting.length + skippedErrors.length
+  const createdWithNotes = created.filter((item) => item.notes?.length > 0)
 
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-lg border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-bold text-slate-900">Import Complete</h2>
-        <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <div>
-            <dt className="text-xs text-slate-500">Created</dt>
+            <dt className="text-xs text-slate-500">Created (Draft)</dt>
             <dd className="text-2xl font-bold text-green-600">{created.length}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Skipped</dt>
+            <dd className="text-2xl font-bold text-slate-600">{skippedTotal}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Duplicate Product Code</dt>
+            <dd className="text-2xl font-bold text-slate-600">{duplicateProductCodes.length}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Missing Name / Product Code</dt>
+            <dd className="text-2xl font-bold text-slate-600">{missingRequired.length}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-slate-500">Unmapped Categories</dt>
+            <dd className="text-2xl font-bold text-amber-600">{unmappedCategories.length}</dd>
           </div>
           <div>
             <dt className="text-xs text-slate-500">Failed</dt>
             <dd className="text-2xl font-bold text-red-600">{failed.length}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Skipped — Existing</dt>
-            <dd className="text-2xl font-bold text-slate-600">{skippedExisting.length}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">Skipped — Errors</dt>
-            <dd className="text-2xl font-bold text-slate-600">{skippedErrors.length}</dd>
           </div>
         </dl>
         <dl className="mt-4 grid grid-cols-3 gap-4 border-t border-slate-100 pt-4">
@@ -99,6 +120,13 @@ export function ImportResultPanel({ result, onReturnToReview }) {
             <dd className="text-lg font-bold text-slate-900">{totals.specificationsCreated}</dd>
           </div>
         </dl>
+        {created.length > 0 && (
+          <p className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-600">
+            Imported products were created as <strong>Drafts</strong> and are not
+            visible to customers yet. Open each one in Products and set its Status to
+            Published when it is ready.
+          </p>
+        )}
       </div>
 
       {failed.length > 0 && (
@@ -112,29 +140,80 @@ export function ImportResultPanel({ result, onReturnToReview }) {
         </div>
       )}
 
-      {skippedExisting.length > 0 && (
+      {duplicateProductCodes.length > 0 && (
         <div className="rounded-lg border border-slate-200 bg-white p-6">
           <h3 className="mb-3 text-sm font-semibold text-slate-900">
-            Skipped — Existing ({skippedExisting.length})
+            Duplicate Product Code ({duplicateProductCodes.length})
           </h3>
+          <p className="mb-3 text-xs text-slate-400">
+            Not imported. Existing products are never modified or overwritten.
+          </p>
           <div className="flex flex-col gap-2">
-            {skippedExisting.map((item, index) => (
+            {duplicateProductCodes.map((item, index) => (
               <SkippedCard key={index} item={item} reasonLabel={item.reason} />
             ))}
           </div>
         </div>
       )}
 
-      {skippedErrors.length > 0 && (
+      {missingRequired.length > 0 && (
         <div className="rounded-lg border border-slate-200 bg-white p-6">
           <h3 className="mb-3 text-sm font-semibold text-slate-900">
-            Skipped — Errors ({skippedErrors.length})
+            Missing Name / Product Code ({missingRequired.length})
           </h3>
           <div className="flex flex-col gap-2">
-            {skippedErrors.map((item, index) => (
+            {missingRequired.map((item, index) => (
               <SkippedCard key={index} item={item} reasonLabel={item.reason} />
             ))}
           </div>
+        </div>
+      )}
+
+      {otherSkipped.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-6">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">
+            Skipped — Other Errors ({otherSkipped.length})
+          </h3>
+          <div className="flex flex-col gap-2">
+            {otherSkipped.map((item, index) => (
+              <SkippedCard key={index} item={item} reasonLabel={item.reason} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {unmappedCategories.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6">
+          <h3 className="mb-1 text-sm font-semibold text-amber-900">
+            Unmapped Categories ({unmappedCategories.length})
+          </h3>
+          <p className="mb-3 text-xs text-amber-800">
+            These products were imported as Drafts without the category below. No category was
+            created &mdash; assign an existing category in Admin Products.
+          </p>
+          <ul className="flex flex-col gap-1 text-sm text-amber-900">
+            {unmappedCategories.map((item, index) => (
+              <li key={index}>
+                Row {item.rowNumber} · {item.productCode} — {item.productName}:{' '}
+                {item.unmapped.map((n) => `"${n}"`).join(', ')}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {createdWithNotes.length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-white p-6">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">
+            Created with notes ({createdWithNotes.length})
+          </h3>
+          <ul className="flex flex-col gap-1 text-sm text-slate-600">
+            {createdWithNotes.map((item, index) => (
+              <li key={index}>
+                Row {item.rowNumber} · {item.productCode} — {item.productName}: {item.notes.join(' ')}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

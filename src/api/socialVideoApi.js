@@ -23,9 +23,15 @@ const PUBLISHED_REEL_SELECT = `
   id, title, image, video_url, reel_url, account, views, duration, created_at,
   social_video_products (
     sort_order,
-    products ( id, name, slug, image, price, original_price, badge, rating, capacity, description )
+    products!inner ( id, name, slug, image, price, original_price, badge, rating, capacity, description )
   )
 `
+
+// Tagged products that are still drafts are dropped from the Reel (the
+// `!inner` embed removes the join row; the Reel itself is unaffected). RLS
+// already hides drafts from `anon`; this also covers a signed-in admin
+// browsing the storefront. See db/migrations/0026.
+const PUBLISHED_TAGGED_PRODUCTS = 'social_video_products.products.status'
 
 // The customer-facing "latest 15 published Reels" rule (see
 // db/migrations/0008_social_videos.sql's own comments): a pure query-level
@@ -39,6 +45,7 @@ export async function getPublishedReels(limit = 15) {
     .from('social_videos')
     .select(PUBLISHED_REEL_SELECT)
     .eq('is_published', true)
+    .eq(PUBLISHED_TAGGED_PRODUCTS, 'published')
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(limit)

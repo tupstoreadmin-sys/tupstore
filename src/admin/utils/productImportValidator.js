@@ -27,6 +27,13 @@ const VALID_AVAILABILITY = ['in_stock', 'out_of_stock', 'preorder']
 // than a literal '' entry).
 const VALID_BADGES = ['Best Seller', 'New Arrival']
 
+// Shared with productImportReview.js, which classifies rows by these exact
+// messages.
+export const EXISTING_CODE_MESSAGE =
+  'Duplicate Product Code - a product with this code already exists. Skipped, not modified.'
+export const DUPLICATE_CODE_IN_FILE_MESSAGE = 'Duplicate Product Code in this file'
+export const EXISTING_SLUG_MESSAGE = 'A product with this generated slug already exists'
+
 function normalizedKey(value) {
   return (value ?? '').trim().toLowerCase()
 }
@@ -42,6 +49,35 @@ function buildCategoryLookup(categories) {
     if (category.slug) map.set(normalizedKey(category.slug), category)
   }
   return map
+}
+
+// Category cell -> matched existing categories + unmatched names. Categories
+// are NEVER created by the import: a name/slug that matches nothing is
+// reported back as "unmapped" and the product is imported without it. The
+// whole cell is tried first (so a category whose own name contains a comma
+// still matches); only if that fails is it split into several categories on
+// `|`, `;` or `,`.
+export function resolveCategoryText(text, categoryLookup) {
+  const result = { categoryIds: [], categoryNames: [], unmapped: [] }
+  const value = (text ?? '').trim()
+  if (!value) return result
+
+  const whole = categoryLookup.get(normalizedKey(value))
+  if (whole) {
+    result.categoryIds.push(whole.id)
+    result.categoryNames.push(whole.name)
+    return result
+  }
+
+  for (const part of value.split(/[|;,]/).map((p) => p.trim()).filter(Boolean)) {
+    const match = categoryLookup.get(normalizedKey(part))
+    if (!match) result.unmapped.push(part)
+    else if (!result.categoryIds.includes(match.id)) {
+      result.categoryIds.push(match.id)
+      result.categoryNames.push(match.name)
+    }
+  }
+  return result
 }
 
 function groupByKey(rows, keyFn) {
@@ -63,6 +99,9 @@ function groupByKey(rows, keyFn) {
 export function validateProductImport(parsed, { categories, existingProducts }) {
   const errors = []
   const warnings = []
+  // Informational findings (currently: unmapped categories). They never
+  // block a row and never need acknowledging.
+  const info = []
 
   const categoryLookup = buildCategoryLookup(categories)
   const existingProductCodes = new Set(
@@ -97,21 +136,25 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
     (p) => slugify(p.name)
   )
 
+  // Per-row derived data the review/engine need: the slug the product will
+  // be created with, and its resolved/unmapped categories.
+  const rowInfo = new Map()
+  const takenSlugs = new Set(existingSlugs)
+
   for (const product of parsed.products) {
     const ctx = { sheet: 'Products', rowNumber: product.rowNumber, productCode: product.product_code }
+    let duplicateCodeInFile = false
 
+    // Only Name and Product Code are mandatory.
     if (!product.product_code) {
       addFinding(errors, { ...ctx, severity: 'error', message: 'Missing product_code' })
     } else {
       if (productCodeGroups.get(normalizedKey(product.product_code)).length > 1) {
-        addFinding(errors, { ...ctx, severity: 'error', message: 'Duplicate product_code in this file' })
+        duplicateCodeInFile = true
+        addFinding(errors, { ...ctx, severity: 'error', message: DUPLICATE_CODE_IN_FILE_MESSAGE })
       }
       if (existingProductCodes.has(normalizedKey(product.product_code))) {
-        addFinding(errors, {
-          ...ctx,
-          severity: 'error',
-          message: 'Existing product code — import mode not implemented yet.',
-        })
+        addFinding(errors, { ...ctx, severity: 'error', message: EXISTING_CODE_MESSAGE })
       }
     }
 
@@ -128,46 +171,61 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
       }
     }
 
+    // Slug: from the name; when that is already used (by an existing product
+    // or another row in this file) the product code is appended so products
+    // that share a name but have different codes can all be imported.
+    // Only an unresolvable collision is an error.
+    let slug = ''
     if (!product.name) {
       addFinding(errors, { ...ctx, severity: 'error', message: 'Missing product name' })
     } else {
-      const slug = slugify(product.name)
-      if (slugGroups.get(slug).length > 1) {
-        addFinding(errors, {
-          ...ctx,
-          severity: 'error',
-          message: 'Duplicate slug generated from name (already used by another row in this file)',
-        })
-      } else if (existingSlugs.has(slug)) {
-        addFinding(errors, {
-          ...ctx,
-          severity: 'error',
-          message: 'A product with this generated slug already exists',
-        })
+      const base = slugify(product.name)
+      const sharedInFile = base ? slugGroups.get(base).length > 1 : false
+      if (base && !sharedInFile && !existingSlugs.has(base)) {
+        slug = base
+      } else if (product.product_code && !duplicateCodeInFile) {
+        const withCode = slugify(`${product.name} ${product.product_code}`)
+        if (withCode && withCode !== base && !takenSlugs.has(withCode)) {
+          slug = withCode
+        } else {
+          addFinding(errors, {
+            ...ctx,
+            severity: 'error',
+            message: EXISTING_SLUG_MESSAGE,
+          })
+        }
       }
+      if (slug) takenSlugs.add(slug)
     }
 
-    if (!product.category) {
-      addFinding(errors, { ...ctx, severity: 'error', message: 'Missing category' })
-    } else if (!categoryLookup.has(normalizedKey(product.category))) {
-      addFinding(errors, {
+    // Category is optional. A value that matches no existing category is
+    // reported as unmapped (never created, never an error): the product is
+    // still imported - as a Draft without that category.
+    const categoryMatch = resolveCategoryText(product.category, categoryLookup)
+    if (categoryMatch.unmapped.length > 0) {
+      addFinding(info, {
         ...ctx,
-        severity: 'error',
-        message: `Invalid category: "${product.category}"`,
+        severity: 'info',
+        message: `Unmapped category: ${categoryMatch.unmapped.map((n) => `"${n}"`).join(', ')}`,
       })
     }
 
-    if (product.price === undefined) {
-      addFinding(errors, { ...ctx, severity: 'error', message: 'Missing price' })
-    } else if (Number.isNaN(product.price)) {
-      addFinding(errors, { ...ctx, severity: 'error', message: 'Price is not a valid number' })
-    } else if (product.price <= 0) {
-      // Stricter than the DB's own `price >= 0` check (db/schema.sql) —
-      // deliberately so: a real catalogue price of 0 is virtually always a
-      // blank/placeholder cell coerced to a number, never an intentional
-      // "free" product, and nothing else in the pipeline would otherwise
-      // catch it (see docs/product-import readiness audit).
-      addFinding(errors, { ...ctx, severity: 'error', message: 'Price must be greater than 0.' })
+    rowInfo.set(product.rowNumber, {
+      slug,
+      categoryIds: categoryMatch.categoryIds,
+      categoryNames: categoryMatch.categoryNames,
+      unmappedCategories: categoryMatch.unmapped,
+    })
+
+    // Price is optional (blank / 0 = not priced yet - the product stays a
+    // Draft until an admin sets one). A present value must still be a
+    // valid, non-negative number.
+    if (product.price !== undefined) {
+      if (Number.isNaN(product.price)) {
+        addFinding(errors, { ...ctx, severity: 'error', message: 'Price is not a valid number' })
+      } else if (product.price < 0) {
+        addFinding(errors, { ...ctx, severity: 'error', message: 'Price cannot be negative' })
+      }
     }
 
     if (product.original_price !== undefined) {
@@ -186,6 +244,8 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
       } else if (
         typeof product.price === 'number' &&
         !Number.isNaN(product.price) &&
+        product.price > 0 &&
+        product.original_price > 0 &&
         product.original_price < product.price
       ) {
         addFinding(warnings, {
@@ -206,9 +266,9 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
 
     // Same case-sensitive exact-match convention as VALID_AVAILABILITY
     // above (product.badge is already trimmed by normalizeString() in
-    // productImportParser.js) — a blank badge is allowed (no badge), but a
+    // productImportParser.js) - a blank badge is allowed (no badge), but a
     // non-blank value must match one of the two canonical strings exactly.
-    // Never silently coerced/lowercased into a valid value — a near-miss
+    // Never silently coerced/lowercased into a valid value - a near-miss
     // like "Best seller" is rejected, not corrected.
     if (product.badge && !VALID_BADGES.includes(product.badge)) {
       addFinding(errors, {
@@ -228,25 +288,6 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
           message: 'Rating must be between 0 and 5',
         })
       }
-    }
-
-    if (!product.main_image) {
-      addFinding(errors, { ...ctx, severity: 'error', message: 'Missing main_image' })
-    }
-
-    const blankOptionalFields = []
-    if (!product.badge) blankOptionalFields.push('badge')
-    if (!product.capacity) blankOptionalFields.push('capacity')
-    if (product.rating === undefined) blankOptionalFields.push('rating')
-    if (!product.colors) blankOptionalFields.push('colors')
-    if (!product.description) blankOptionalFields.push('description')
-    if (!product.availability) blankOptionalFields.push('availability')
-    if (blankOptionalFields.length > 0) {
-      addFinding(warnings, {
-        ...ctx,
-        severity: 'warning',
-        message: `Optional fields left blank: ${blankOptionalFields.join(', ')}`,
-      })
     }
   }
 
@@ -366,33 +407,6 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
     }
   }
 
-  // ── Per-product "nothing beyond the basics" warnings ─────────────────
-  for (const product of parsed.products) {
-    if (!product.product_code) continue
-    const code = normalizedKey(product.product_code)
-    const ctx = { sheet: 'Products', rowNumber: product.rowNumber, productCode: product.product_code }
-
-    const imageCount = parsed.images.filter((row) => normalizedKey(row.product_code) === code).length
-    const featureCount = parsed.features.filter((row) => normalizedKey(row.product_code) === code).length
-    const specCount = parsed.specifications.filter(
-      (row) => normalizedKey(row.product_code) === code
-    ).length
-
-    if (imageCount === 0) {
-      addFinding(warnings, {
-        ...ctx,
-        severity: 'warning',
-        message: 'No gallery images beyond the main image',
-      })
-    }
-    if (featureCount === 0) {
-      addFinding(warnings, { ...ctx, severity: 'warning', message: 'No features listed' })
-    }
-    if (specCount === 0) {
-      addFinding(warnings, { ...ctx, severity: 'warning', message: 'No specifications listed' })
-    }
-  }
-
   // A product "would import cleanly" if it has a product_code and no error
   // anywhere in the file is attributed to that code — including errors
   // raised from the Images/Features/Specifications sheets, since those
@@ -413,5 +427,5 @@ export function validateProductImport(parsed, { categories, existingProducts }) 
     warningCount: warnings.length,
   }
 
-  return { errors, warnings, validProductCodes: [...validProductCodes], summary }
+  return { errors, warnings, info, rowInfo, validProductCodes: [...validProductCodes], summary }
 }

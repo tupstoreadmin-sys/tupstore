@@ -190,11 +190,13 @@ export default function AdminProductImportPage() {
     return new Set(rows.map((r) => r.product.rowNumber))
   }, [readyRows, warningRows, warningsAcknowledged])
 
-  const canImport =
-    status === 'ready' &&
-    importableRowNumbers.size > 0 &&
-    imageAssets.size > 0 &&
-    importPhase === 'review'
+  // Image files are optional - products import as Drafts without them.
+  const canImport = status === 'ready' && importableRowNumbers.size > 0 && importPhase === 'review'
+
+  const unmappedRows = useMemo(
+    () => (review ? review.rows.filter((r) => r.unmappedCategories.length > 0) : []),
+    [review]
+  )
 
   const handleStartImport = () => setImportPhase('confirming')
   const handleCancelConfirm = () => setImportPhase('review')
@@ -235,7 +237,10 @@ export default function AdminProductImportPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-900">Import Product Catalogue</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Upload the approved Excel catalogue to validate products before importing them.
+          Upload an Excel catalogue to validate products before importing them. Only{' '}
+          <strong>Name</strong> and <strong>Product Code</strong> are required &mdash; Price,
+          Category, images and everything else are optional. Every imported product is created as a{' '}
+          <strong>Draft</strong>, hidden from customers until you complete and publish it.
         </p>
       </div>
 
@@ -273,7 +278,8 @@ export default function AdminProductImportPage() {
           {fileName && <span className="text-xs text-slate-500">{fileName}</span>}
         </div>
         <p className="mt-1 text-xs text-slate-400">
-          .xlsx only, using the approved Products / Images / Features / Specifications template.
+          .xlsx only. The Products sheet needs a Name and a Product Code column; the optional
+          Images / Features / Specifications sheets are used when present.
         </p>
 
         {status === 'parsing' && (
@@ -296,12 +302,12 @@ export default function AdminProductImportPage() {
       {status === 'ready' && parsed && review && (
         <div className="rounded-lg border border-slate-200 bg-white p-6">
           <label className="mb-1 block text-xs font-medium text-slate-600">
-            Product Image Files
+            Product Image Files (optional)
           </label>
           <p className="mb-2 text-xs text-slate-400">
-            Select every image file referenced by the workbook&apos;s main_image/image_file columns
-            (multiple files at once). Matched by exact filename — no folder or naming convention is
-            assumed.
+            Only needed if the workbook has main_image/image_file columns. Select the image files
+            (multiple at once); they are matched by exact filename. Products without an image are
+            still imported as Drafts &mdash; add images later in Admin Products.
           </p>
           <input
             ref={imageInputRef}
@@ -367,6 +373,35 @@ export default function AdminProductImportPage() {
             <ImportSummaryCards summary={review.summary} />
           </div>
 
+          {review.summary.importableCount > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+              <p>
+                {review.summary.importableCount} product(s) can be imported as <strong>Drafts</strong>.
+                Of these, {review.summary.noPriceCount} have no price, {review.summary.noCategoryCount}{' '}
+                have no category and {review.summary.noImageCount} have no image. A product can only be
+                published once it has an image, a price above 0 and at least one category.
+              </p>
+            </div>
+          )}
+
+          {unmappedRows.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <h3 className="font-semibold">Unmapped Categories ({unmappedRows.length})</h3>
+              <p className="mt-1 text-xs">
+                These category names do not match any existing category. Categories are never created
+                by the import &mdash; these products will be imported as Drafts without that category.
+              </p>
+              <ul className="mt-2 flex flex-col gap-1 text-xs">
+                {unmappedRows.map((r) => (
+                  <li key={r.product.rowNumber}>
+                    Row {r.product.rowNumber} &middot; {r.product.product_code} &middot;{' '}
+                    {r.product.name}: {r.unmappedCategories.map((n) => `"${n}"`).join(', ')}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <ImportFilters
             activeFilter={activeFilter}
             onFilterChange={setActiveFilter}
@@ -393,8 +428,8 @@ export default function AdminProductImportPage() {
               Warnings ({review.summary.warningCount})
             </h2>
             <p className="mb-3 text-xs text-slate-400">
-              Warnings do not block import — but a product with a warning is only included once you
-              acknowledge it below.
+              Warnings do not block import &mdash; but a product with a warning is only included once
+              you acknowledge it below.
             </p>
             <ImportWarningPanel warnings={review.warningsWithNames} />
             {review.summary.warningCount > 0 && (
@@ -457,16 +492,11 @@ export default function AdminProductImportPage() {
               type="button"
               onClick={handleStartImport}
               disabled={!canImport}
-              title={!canImport ? 'Select a workbook, image files, and at least one importable product' : undefined}
+              title={!canImport ? 'Select a workbook with at least one importable product' : undefined}
               className="inline-flex items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
             >
               Import Products
             </button>
-            {imageAssets.size === 0 && importableRowNumbers.size > 0 && (
-              <p className="mt-2 text-xs text-slate-400">
-                Select the product image files above before importing.
-              </p>
-            )}
           </div>
         </>
       )}

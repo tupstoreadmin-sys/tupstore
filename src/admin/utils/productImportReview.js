@@ -1,3 +1,9 @@
+import {
+  EXISTING_CODE_MESSAGE,
+  DUPLICATE_CODE_IN_FILE_MESSAGE,
+  EXISTING_SLUG_MESSAGE,
+} from './productImportValidator'
+
 // Step 2 — Import Review derivation. Consumes the already-computed output
 // of productImportParser.js/productImportValidator.js (Step 1, untouched)
 // and re-organizes it into a per-row view model for the review screen: one
@@ -38,9 +44,8 @@ function groupByKey(items, keyFn) {
   return groups
 }
 
-const EXISTING_CODE_MESSAGE = 'Existing product code — import mode not implemented yet.'
-const EXISTING_SLUG_MESSAGE = 'A product with this generated slug already exists'
 const DUPLICATE_SLUG_PREFIX = 'Duplicate slug generated from name'
+const MISSING_REQUIRED_MESSAGES = ['Missing product_code', 'Missing product name']
 
 // Status priority, per spec: ERROR > EXISTS > WARNING > READY. A product
 // whose ONLY problem is "its product_code already exists" is EXISTS, not
@@ -102,9 +107,16 @@ export function buildImportReview(parsed, validation, existingProducts) {
     ]
     const nonExistingErrors = productErrors.filter((f) => f.message !== EXISTING_CODE_MESSAGE)
     const existingMatch = existingByCode.get(code) ?? null
+    const info = validation.rowInfo?.get(product.rowNumber)
 
     return {
       product,
+      // Derived by the validator: the slug the product will be created with
+      // and its matched / unmapped categories (categories are never created).
+      slug: info?.slug ?? '',
+      categoryIds: info?.categoryIds ?? [],
+      categoryNames: info?.categoryNames ?? [],
+      unmappedCategories: info?.unmappedCategories ?? [],
       status: computeStatus({
         hasNonExistingError: nonExistingErrors.length > 0,
         isExisting: Boolean(existingMatch),
@@ -123,6 +135,7 @@ export function buildImportReview(parsed, validation, existingProducts) {
     }
   })
 
+  const importable = rows.filter((r) => r.status === 'ready' || r.status === 'warning')
   const summary = {
     totalProducts: rows.length,
     readyCount: rows.filter((r) => r.status === 'ready').length,
@@ -130,6 +143,22 @@ export function buildImportReview(parsed, validation, existingProducts) {
     warningCount: rows.filter((r) => r.status === 'warning').length,
     existingCodeCount: rows.filter((r) => r.status === 'exists').length,
     existingSlugCount: validation.errors.filter((f) => f.message === EXISTING_SLUG_MESSAGE).length,
+    // Duplicate Product Code = already in the catalogue + repeated inside
+    // this file (every row sharing the code is held back).
+    duplicateCodeCount: rows.filter(
+      (r) =>
+        r.status === 'exists' || r.errors.some((f) => f.message === DUPLICATE_CODE_IN_FILE_MESSAGE)
+    ).length,
+    missingRequiredCount: rows.filter((r) =>
+      r.errors.some((f) => MISSING_REQUIRED_MESSAGES.includes(f.message))
+    ).length,
+    unmappedCategoryCount: rows.filter((r) => r.unmappedCategories.length > 0).length,
+    // Of the products that WILL be imported: how many still lack the fields
+    // needed to publish (they import as Drafts and are completed in Admin).
+    importableCount: importable.length,
+    noPriceCount: importable.filter((r) => !(r.product.price > 0)).length,
+    noCategoryCount: importable.filter((r) => r.categoryIds.length === 0).length,
+    noImageCount: importable.filter((r) => !r.product.main_image).length,
   }
 
   // ── Slug collisions — both within-file duplicates and against Supabase ──
