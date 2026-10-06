@@ -29,6 +29,24 @@ export async function getProductCount() {
   return getCount('products')
 }
 
+// Total + status breakdown, as three cheap COUNT-only requests (no product
+// rows are downloaded). Uses products.status ('draft' | 'published').
+export async function getProductStatusCounts() {
+  const countWhere = async (status) => {
+    let query = supabase.from('products').select('*', { count: 'exact', head: true })
+    if (status) query = query.eq('status', status)
+    const { count, error } = await query
+    if (error) throw error
+    return count ?? 0
+  }
+  const [total, draft, published] = await Promise.all([
+    countWhere(null),
+    countWhere('draft'),
+    countWhere('published'),
+  ])
+  return { total, draft, published }
+}
+
 export async function getCategoryCount() {
   return getCount('categories')
 }

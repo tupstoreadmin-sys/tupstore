@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  getProductCount,
+  getProductStatusCounts,
   getCategoryCount,
   getTotalEnquiryCount,
   getNewEnquiryCount,
@@ -16,7 +16,7 @@ const CARD_DEFS = [
   {
     key: 'products',
     label: 'Total Products',
-    fetcher: getProductCount,
+    fetcher: getProductStatusCounts,
     to: '/admin/products',
     comingSoon: false,
   },
@@ -60,7 +60,17 @@ function SummaryCard({ label, state, to, comingSoon }) {
       {state.status === 'loading' && (
         <p className="mt-2 text-2xl font-bold text-slate-300">—</p>
       )}
-      {state.status === 'ready' && (
+      {state.status === 'ready' && typeof state.value === 'object' && (
+        <>
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {state.value.total}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Draft: {state.value.draft} · Published: {state.value.published}
+          </p>
+        </>
+      )}
+      {state.status === 'ready' && typeof state.value !== 'object' && (
         <p className="mt-2 text-2xl font-bold text-slate-900">
           {state.value}
         </p>

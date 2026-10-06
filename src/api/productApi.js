@@ -76,10 +76,10 @@ export async function getProducts({ search, category, priceMax, inStockOnly } = 
     // category ids first (categories is a small, already-fetched-elsewhere
     // reference table, so this is a cheap second query, not a full-catalog
     // scan), then fold those ids into the same OR group as an `in` clause.
-    const { data: matchingCategories, error: categoryError } = await supabase
-      .from('categories')
-      .select('id')
-      .ilike('name', `%${search}%`)
+    // Hidden (internal-only) categories are excluded, so searching for
+    // their name does not surface their products.
+    const { data: matchingCategories, error: categoryError } =
+      await selectPublicCategories('id', (query) => query.ilike('name', `%${search}%`))
     handleApiError(categoryError, 'getProducts (category name search)')
 
     if (matchingCategories && matchingCategories.length > 0) {
@@ -128,13 +128,32 @@ export async function getFeaturedProducts(limit = 4) {
   return data
 }
 
+// Categories the storefront may show: show_in_frontend = true (migration
+// 0027). Internal-only categories such as OTHER stay in the database and in
+// the Admin, but are never returned here. If that column has not been
+// created yet (migration 0027 not applied) Postgres reports 42703 and the
+// query falls back to every category rather than breaking the storefront.
+async function selectPublicCategories(columns, applyOrder = (q) => q) {
+  const run = (onlyVisible) => {
+    let query = supabase.from('categories').select(columns)
+    if (onlyVisible) query = query.eq('show_in_frontend', true)
+    return applyOrder(query)
+  }
+  const result = await run(true)
+  if (result.error?.code === '42703') {
+    console.warn('[categories] show_in_frontend is missing - apply migration 0027')
+    return run(false)
+  }
+  return result
+}
+
 export async function getCategories() {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .order('sort_order', { ascending: true })
-    // Stable tiebreaker only; the admin-defined sort_order decides the order.
-    .order('name', { ascending: true })
+  const { data, error } = await selectPublicCategories('*', (query) =>
+    query
+      .order('sort_order', { ascending: true })
+      // Stable tiebreaker only; the admin-defined sort_order decides the order.
+      .order('name', { ascending: true })
+  )
   handleApiError(error, 'getCategories')
   return data
 }

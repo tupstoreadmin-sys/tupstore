@@ -71,11 +71,55 @@ function throwFriendlyProductWriteError(error) {
 
 // ── Products ────────────────────────────────────────────────────────────
 
-export async function getAdminProducts() {
-  const { data, error } = await supabase
-    .from('products')
-    .select(PRODUCT_SELECT)
-    .order('name', { ascending: true })
+// Turns free text into a literal "contains" pattern for ilike: a typed
+// percent sign, underscore or backslash matches itself instead of acting as
+// a wildcard.
+function containsPattern(term) {
+  return `*${term.replace(/[\\%_]/g, '\\$&')}*`
+}
+
+// Quotes a value for use inside a PostgREST or(...) filter, so commas,
+// parentheses and quotes in the search text cannot break the filter.
+function quoteForOrFilter(value) {
+  return `"${value.replace(/[\\"]/g, '\\$&')}"`
+}
+
+/**
+ * Admin product list. Called with no argument it returns every product
+ * (unchanged behaviour for the import tools). With `filters` the filtering
+ * happens in the database, so the admin list never has to download the whole
+ * catalogue just to search it:
+ *  - search: case-insensitive "contains" on Product Name OR Product Code
+ *  - categoryId / availability / featured ('featured' | 'not_featured') /
+ *    status ('draft' | 'published'): exact filters, all combined with AND
+ *
+ * Note: a single request returns at most the API's row limit (1000 here), so
+ * an unfiltered list of a larger catalogue is cut off - searching/filtering
+ * is how the rest is reached.
+ */
+export async function getAdminProducts(filters = {}) {
+  const { search, categoryId, availability, featured, status } = filters
+  const term = (search ?? '').trim()
+
+  // A second, aliased embed used only to filter by category - the normal
+  // `product_categories` embed must keep returning ALL of a product's
+  // category links, not just the matching one.
+  const select = categoryId
+    ? `${PRODUCT_SELECT}, category_filter:product_categories!inner ( category_id )`
+    : PRODUCT_SELECT
+
+  let query = supabase.from('products').select(select)
+  if (term) {
+    const pattern = quoteForOrFilter(containsPattern(term))
+    query = query.or(`name.ilike.${pattern},product_code.ilike.${pattern}`)
+  }
+  if (categoryId) query = query.eq('category_filter.category_id', categoryId)
+  if (availability) query = query.eq('availability', availability)
+  if (featured === 'featured') query = query.eq('featured', true)
+  if (featured === 'not_featured') query = query.eq('featured', false)
+  if (status) query = query.eq('status', status)
+
+  const { data, error } = await query.order('name', { ascending: true })
   if (error) throw error
   return data ?? []
 }
@@ -136,6 +180,63 @@ export async function deleteAdminProduct(productId) {
     }
     throw error
   }
+}
+
+// ── Bulk delete of DRAFT products ────────────────────────────────────────
+//
+// Every query here is scoped to status = 'draft' inside the database
+// statement itself, so a published product can never be touched, even if
+// the admin's screen is stale.
+
+export async function getDraftProductCount() {
+  const { count, error } = await supabase
+    .from('products')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'draft')
+  if (error) throw error
+  return count ?? 0
+}
+
+// Draft products that an existing customer enquiry points at
+// (enquiry_items.product_id is ON DELETE RESTRICT). `!inner` makes the join
+// a server-side filter: only products that HAVE an enquiry item come back.
+// Returns the total plus the first few for display.
+export async function getDraftProductsReferencedByEnquiries(sampleSize = 20) {
+  const { data, count, error } = await supabase
+    .from('products')
+    .select('id, name, product_code, enquiry_items!inner ( id )', { count: 'exact' })
+    .eq('status', 'draft')
+    .order('name', { ascending: true })
+    .limit(sampleSize)
+  if (error) throw error
+  return {
+    total: count ?? 0,
+    sample: (data ?? []).map(({ id, name, product_code: code }) => ({ id, name, code })),
+  }
+}
+
+// ONE statement: DELETE FROM products WHERE status = 'draft'. It is a single
+// transaction, so it is all-or-nothing: if any targeted product is still
+// referenced by an enquiry (FK RESTRICT, 23503) Postgres rejects the whole
+// statement and not one row is deleted. Child rows (product_categories,
+// product_images, product_features, product_specifications,
+// promotion_products, social_video_products) go with their product via the
+// existing ON DELETE CASCADE keys. Storage image files are not removed here,
+// same as deleteAdminProduct(). Returns how many products were deleted.
+export async function deleteAllDraftProducts() {
+  const { count, error } = await supabase
+    .from('products')
+    .delete({ count: 'exact' })
+    .eq('status', 'draft')
+  if (error) {
+    if (error.code === '23503') {
+      throw new Error(
+        'Nothing was deleted: at least one draft product is referenced by an existing customer enquiry.'
+      )
+    }
+    throw error
+  }
+  return count ?? 0
 }
 
 // ── Categories (for a product form's category picker) ────────────────────

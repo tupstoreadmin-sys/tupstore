@@ -6,6 +6,7 @@ import {
   deleteAdminProduct,
 } from '../api/adminProductApi'
 import { AdminBackLink } from '../components/AdminBackLink'
+import { DeleteDraftProductsDialog } from '../components/DeleteDraftProductsDialog'
 
 function isPermissionError(error) {
   return error?.code === '42501'
@@ -56,11 +57,37 @@ export default function AdminProductsPage() {
   const [availabilityFilter, setAvailabilityFilter] = useState('all')
   const [featuredFilter, setFeaturedFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [showDraftDelete, setShowDraftDelete] = useState(false)
+  // Bumped to force the product list to re-fetch (after a bulk delete).
+  const [reloadToken, setReloadToken] = useState(0)
 
+  // The search text is sent to the database (see getAdminProducts()), so
+  // wait for a short pause in typing instead of querying on every key.
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Products are fetched already filtered (search, category, availability,
+  // featured, status) - the whole catalogue is never downloaded just to be
+  // filtered in the browser. Categories load alongside for the filter
+  // dropdown. The first load drives the loading/unavailable/error screens;
+  // later re-fetches keep the current table (and the focused search box) in
+  // place until the new results arrive.
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getAdminProducts(), getAdminProductCategories()])
+    Promise.all([
+      getAdminProducts({
+        search: debouncedSearch,
+        categoryId: categoryFilter === 'all' ? undefined : categoryFilter,
+        availability: availabilityFilter === 'all' ? undefined : availabilityFilter,
+        featured: featuredFilter === 'all' ? undefined : featuredFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+      }),
+      getAdminProductCategories(),
+    ])
       .then(([products, categories]) => {
         if (!cancelled) {
           setState({ status: 'ready', items: products, categories })
@@ -68,54 +95,42 @@ export default function AdminProductsPage() {
       })
       .catch((error) => {
         console.error('[AdminProducts] load failed:', error.message)
-        if (!cancelled) {
-          setState({
+        if (cancelled) return
+        setState((current) => {
+          // After the first successful load, a failed re-fetch keeps the
+          // existing table and just reports the problem.
+          if (current.status === 'ready') return current
+          return {
             status: isPermissionError(error) ? 'unavailable' : 'error',
             items: [],
             categories: [],
-          })
-        }
+          }
+        })
+        setBanner({
+          type: 'error',
+          text: 'Could not update the product list. Please try again.',
+        })
       })
 
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [
+    debouncedSearch,
+    categoryFilter,
+    availabilityFilter,
+    featuredFilter,
+    statusFilter,
+    reloadToken,
+  ])
 
   const categoryNameById = useMemo(
     () => new Map(state.categories.map((category) => [category.id, category.name])),
     [state.categories]
   )
 
-  const filteredProducts = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return state.items.filter((product) => {
-      if (query && !product.name.toLowerCase().includes(query)) return false
-      if (
-        categoryFilter !== 'all' &&
-        !linkedCategoryIds(product).includes(categoryFilter)
-      ) {
-        return false
-      }
-      if (
-        availabilityFilter !== 'all' &&
-        product.availability !== availabilityFilter
-      ) {
-        return false
-      }
-      if (featuredFilter === 'featured' && !product.featured) return false
-      if (featuredFilter === 'not_featured' && product.featured) return false
-      if (statusFilter !== 'all' && product.status !== statusFilter) return false
-      return true
-    })
-  }, [
-    state.items,
-    search,
-    categoryFilter,
-    availabilityFilter,
-    featuredFilter,
-    statusFilter,
-  ])
+  // Filtering already happened in the database.
+  const filteredProducts = state.items
 
   const hasActiveFilters =
     search.trim() !== '' ||
@@ -166,6 +181,13 @@ export default function AdminProductsPage() {
         </div>
         {state.status === 'ready' && (
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDraftDelete(true)}
+              className="inline-flex items-center justify-center rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            >
+              Delete All Draft Products
+            </button>
             <Link
               to="/admin/products/import"
               className="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -414,6 +436,24 @@ export default function AdminProductsPage() {
             </tbody>
           </table>
         </div>
+      )}
+      {showDraftDelete && (
+        <DeleteDraftProductsDialog
+          onClose={() => setShowDraftDelete(false)}
+          onDeleted={(deleted) => {
+            setShowDraftDelete(false)
+            setBanner({
+              type: 'success',
+              text: `${deleted} draft product${deleted === 1 ? '' : 's'} deleted successfully.`,
+            })
+            setReloadToken((n) => n + 1)
+          }}
+          onFailed={(message) => {
+            setShowDraftDelete(false)
+            setBanner({ type: 'error', text: message })
+            setReloadToken((n) => n + 1)
+          }}
+        />
       )}
     </div>
   )
