@@ -67,6 +67,7 @@ export function ProductInfo({
         <ProductPrice
           price={product.price}
           originalPrice={product.originalPrice}
+          size="detail"
         />
       </div>
 
