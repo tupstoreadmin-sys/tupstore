@@ -62,7 +62,7 @@ export function TrustedDestination({ onLearnMore, className }) {
         </div>
         <div className="overflow-hidden rounded-lg bg-surface-subtle">
           <img
-            src="/images/hero_kitchen.png"
+            src="/images/hero_kitchen_new.png"
             alt="Store interior"
             className="h-full w-full object-cover"
           />
