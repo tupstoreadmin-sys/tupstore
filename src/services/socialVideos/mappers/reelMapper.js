@@ -61,6 +61,7 @@ export function mapReel(row) {
     image: row.image,
     account: row.account ?? undefined,
     videoUrl: row.video_url ?? null,
+    externalVideoUrl: row.external_video_url ?? null,
     reelUrl: row.reel_url ?? undefined,
     products: mapTaggedProducts(row.social_video_products),
   }

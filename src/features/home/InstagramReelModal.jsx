@@ -13,6 +13,7 @@ import {
 } from '../../components/layout/icons'
 import { useAddToEnquiry } from '../../hooks/useAddToEnquiry'
 import { ProductQuickViewModal } from './ProductQuickViewModal'
+import { parseVideoUrl } from '../../utils/videoUrl'
 
 /**
  * @param {object} props
@@ -91,7 +92,14 @@ export function InstagramReelModal({
   const prevReel = reels[prevIndex]
   const nextReel = reels[nextIndex]
 
-  const videoSource = currentReel.videoUrl || currentReel.video
+  // An external Video URL takes priority over an uploaded video: YouTube
+  // plays through its embed player, a direct file link in the <video> below.
+  const externalVideo = parseVideoUrl(currentReel.externalVideoUrl)
+  const youtubeEmbedUrl = externalVideo?.type === 'youtube' ? externalVideo.embedUrl : null
+  const videoSource =
+    (externalVideo?.type === 'file' ? externalVideo.url : null) ||
+    currentReel.videoUrl ||
+    currentReel.video
 
   const togglePlay = (e) => {
     e?.stopPropagation()
@@ -301,7 +309,16 @@ export function InstagramReelModal({
             className="relative h-full w-full overflow-hidden cursor-pointer"
             onClick={togglePlay}
           >
-            {videoSource ? (
+            {youtubeEmbedUrl ? (
+              <iframe
+                key={currentReel.id}
+                src={youtubeEmbedUrl}
+                title={currentReel.title}
+                allow="autoplay; encrypted-media; picture-in-picture"
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="h-full w-full border-0 bg-black"
+              />
+            ) : videoSource ? (
               <video
                 ref={videoRef}
                 src={videoSource}
@@ -325,7 +342,7 @@ export function InstagramReelModal({
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90 pointer-events-none" />
 
             {/* Center Play Button Control */}
-            {!isPlaying && (
+            {!isPlaying && !youtubeEmbedUrl && (
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-ink shadow-2xl backdrop-blur-sm transition-transform duration-fast hover:scale-110">
                 <IconPlay className="ml-0.5 h-6 w-6 fill-current" />
               </div>

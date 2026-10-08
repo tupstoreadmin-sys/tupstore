@@ -13,7 +13,7 @@ import { supabase } from '../../lib/supabase'
 // column. No mock data is used for this admin section.
 
 const SOCIAL_VIDEO_SELECT = `
-  id, title, image, video_url, reel_url, account, views, duration,
+  id, title, image, video_url, external_video_url, reel_url, account, views, duration,
   sort_order, is_published, created_at, updated_at,
   social_video_products(count)
 `
@@ -22,6 +22,7 @@ const SOCIAL_VIDEO_BASE_FIELDS = [
   'title',
   'image',
   'video_url',
+  'external_video_url',
   'reel_url',
   'account',
   'views',

@@ -19,8 +19,8 @@ import { handleApiError } from '../utils/handleApiError'
 // productMapper.js's existing sortBySortOrder() convention for
 // product_images/product_features/product_specifications rather than
 // introducing a new PostgREST embedded-order query parameter.
-const PUBLISHED_REEL_SELECT = `
-  id, title, image, video_url, reel_url, account, views, duration, created_at,
+const reelSelect = (withExternalVideoUrl) => `
+  id, title, image, video_url, ${withExternalVideoUrl ? 'external_video_url,' : ''} reel_url, account, views, duration, created_at,
   social_video_products (
     sort_order,
     products!inner ( id, name, slug, image, price, original_price, badge, rating, capacity, description )
@@ -41,14 +41,23 @@ const PUBLISHED_TAGGED_PRODUCTS = 'social_video_products.products.status'
 // each returned Reel's embedded social_video_products are NOT limited, so
 // every tagged product for a returned Reel is always included.
 export async function getPublishedReels(limit = 15) {
-  const { data, error } = await supabase
-    .from('social_videos')
-    .select(PUBLISHED_REEL_SELECT)
-    .eq('is_published', true)
-    .eq(PUBLISHED_TAGGED_PRODUCTS, 'published')
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(limit)
+  const run = (withExternalVideoUrl) =>
+    supabase
+      .from('social_videos')
+      .select(reelSelect(withExternalVideoUrl))
+      .eq('is_published', true)
+      .eq(PUBLISHED_TAGGED_PRODUCTS, 'published')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(limit)
+
+  let { data, error } = await run(true)
+  // Column not created yet (migration 0028 not applied): still show the
+  // Reels, just without external video links, instead of breaking the section.
+  if (error?.code === '42703') {
+    console.warn('[reels] external_video_url is missing - apply migration 0028')
+    ;({ data, error } = await run(false))
+  }
 
   handleApiError(error, 'getPublishedReels')
   return data

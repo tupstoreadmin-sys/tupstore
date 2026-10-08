@@ -14,7 +14,18 @@ import {
 // @param {string} props.value - current video URL, or ''
 // @param {(url: string) => void} props.onChange
 // @param {boolean} [props.disabled]
-export function SocialVideoUpload({ value, onChange, disabled }) {
+// @param {string} [props.externalUrl] - the optional external "Video URL"
+//   (YouTube etc.), shown just above the upload control
+// @param {(url: string) => void} [props.onExternalUrlChange]
+// @param {string} [props.externalUrlError]
+export function SocialVideoUpload({
+  value,
+  onChange,
+  disabled,
+  externalUrl = '',
+  onExternalUrlChange,
+  externalUrlError = '',
+}) {
   const fileInputRef = useRef(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [status, setStatus] = useState('idle') // idle | uploading | error
@@ -82,6 +93,29 @@ export function SocialVideoUpload({ value, onChange, disabled }) {
         <p className="mt-2 text-xs text-slate-500">Uploading…</p>
       )}
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+
+      {onExternalUrlChange && (
+        <div className="mt-3">
+          <label className="mb-1 block text-xs font-medium text-slate-600">
+            Video URL
+          </label>
+          <input
+            type="text"
+            value={externalUrl}
+            onChange={(e) => onExternalUrlChange(e.target.value)}
+            disabled={disabled}
+            placeholder="https://www.youtube.com/watch?v=…"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
+          />
+          {externalUrlError && (
+            <p className="mt-1 text-xs text-red-600">{externalUrlError}</p>
+          )}
+          <p className="mt-1 text-xs text-slate-400">
+            YouTube or other supported video URL · Optional — use instead of
+            uploading a video
+          </p>
+        </div>
+      )}
 
       <input
         ref={fileInputRef}

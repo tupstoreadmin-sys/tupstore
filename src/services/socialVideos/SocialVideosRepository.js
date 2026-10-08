@@ -16,6 +16,7 @@
  * @property {string} image - the Reel's own thumbnail
  * @property {string} [account]
  * @property {string|null} [videoUrl]
+ * @property {string|null} [externalVideoUrl] - external link (e.g. YouTube); takes priority over videoUrl for playback
  * @property {string} [reelUrl]
  * @property {TaggedProduct[]} products
  */

@@ -2,16 +2,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { getProductsForTagging } from '../api/adminSocialVideoApi'
 import { SocialVideoThumbnailUpload } from './SocialVideoThumbnailUpload'
 import { SocialVideoUpload } from './SocialVideoUpload'
+import { parseVideoUrl } from '../../utils/videoUrl'
 
 function formatInr(amount) {
   if (amount == null) return null
   return `₹${Number(amount).toLocaleString('en-IN')}`
 }
 
-function validate({ title, image }) {
+function validate({ title, image, externalVideoUrl }) {
   const errors = {}
   if (!title.trim()) errors.title = 'Title is required.'
-  if (!image) errors.image = 'A thumbnail is required.'
+
+  const external = externalVideoUrl.trim()
+  const parsed = parseVideoUrl(external)
+  if (external && !parsed) {
+    errors.externalVideoUrl =
+      'Enter a YouTube link (watch, youtu.be or Shorts) or a direct .mp4 / .webm video link.'
+  }
+  // A thumbnail is required - except for a YouTube link, whose own thumbnail
+  // is used automatically when none is uploaded.
+  if (!image && parsed?.type !== 'youtube') errors.image = 'A thumbnail is required.'
   return errors
 }
 
@@ -51,6 +61,9 @@ export function SocialVideoFormModal({ mode, initialValues, onSubmit, onClose })
   )
   const [image, setImage] = useState(initialValues?.image ?? '')
   const [videoUrl, setVideoUrl] = useState(initialValues?.video_url ?? '')
+  const [externalVideoUrl, setExternalVideoUrl] = useState(
+    initialValues?.external_video_url ?? ''
+  )
 
   const [allProducts, setAllProducts] = useState([])
   const [productsStatus, setProductsStatus] = useState('loading') // loading | ready | error
@@ -137,17 +150,21 @@ export function SocialVideoFormModal({ mode, initialValues, onSubmit, onClose })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const nextErrors = validate({ title, image })
+    const nextErrors = validate({ title, image, externalVideoUrl })
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
     setSubmitting(true)
     setSubmitError('')
     try {
+      const parsedExternal = parseVideoUrl(externalVideoUrl)
       const row = {
         title: title.trim(),
-        image,
+        // No uploaded thumbnail + a YouTube link: use the video's own
+        // YouTube thumbnail (validate() guarantees one of the two exists).
+        image: image || parsedExternal?.thumbnailUrl,
         video_url: videoUrl || null,
+        external_video_url: externalVideoUrl.trim() || null,
         reel_url: reelUrl.trim() || null,
         account: account.trim() || null,
         views: views.trim() || null,
@@ -277,6 +294,9 @@ export function SocialVideoFormModal({ mode, initialValues, onSubmit, onClose })
             value={videoUrl}
             onChange={setVideoUrl}
             disabled={submitting}
+            externalUrl={externalVideoUrl}
+            onExternalUrlChange={setExternalVideoUrl}
+            externalUrlError={errors.externalVideoUrl}
           />
 
           <label className="inline-flex w-fit items-center gap-2 text-sm text-slate-700">
