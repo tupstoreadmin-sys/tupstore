@@ -29,7 +29,7 @@ export function InstagramReels({ reels = [], onSelect, className }) {
     <div className={cn('relative', className)}>
       <div
         ref={scrollerRef}
-        className="flex gap-4 overflow-x-auto pb-2"
+        className="flex gap-4 overflow-x-auto pb-2 scrollbar-none"
         style={{ scrollSnapType: 'x mandatory' }}
       >
         {reels.map((reel, index) => (
