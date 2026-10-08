@@ -232,8 +232,8 @@ function AppShell() {
               />
             </button>
             <p className="mt-3 max-w-[340px] text-[13px] md:text-sm leading-relaxed text-ink-secondary">
-              Official Tupperware Exclusive Store Franchise serving customers
-              across Kerala, India.
+              Tupperware Exclusive Store, Changanassery Serving customers online
+              across Kerala.
             </p>
           </div>
         }
