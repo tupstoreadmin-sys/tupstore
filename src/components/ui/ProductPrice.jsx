@@ -15,27 +15,36 @@ function formatInr(amount) {
  * @param {number} props.price
  * @param {number} [props.originalPrice]
  * @param {string} [props.className] - applied to the wrapping row
- * @param {'default'|'detail'|'offer'} [props.size] - 'detail' is the larger price
- *   used only on the Product Details page; 'offer' is the larger price row used
- *   only on the Promotion Detail page (offer price > original price > discount
- *   badge, wrapping cleanly when narrow). Every other use keeps the default.
+ * @param {'default'|'detail'|'offer'} [props.size] - 'detail' (Product Details page)
+ *   and 'offer' (Promotion Detail page) are the two detail-page layouts. Both share
+ *   one labelled layout for a genuinely discounted item ("Offer Price:", "MRP:",
+ *   discount badge); they differ only in the badge size and price weight. Every
+ *   other use (cards, quick view, enquiry list) keeps the compact default.
  */
 export function ProductPrice({ price, originalPrice, className, size = 'default' }) {
   const discountPct = getDiscountPercent(price, originalPrice)
   const hasDiscount = discountPct !== null
   const isOffer = size === 'offer'
+  const isDetailLayout = size === 'detail' || isOffer
 
-  // Product Details page, discounted product: labelled "Offer Price:" / "MRP:" pairs
+  // Detail pages, genuinely discounted item: labelled "Offer Price:" / "MRP:" pairs
   // plus the discount badge. Each label+amount stays together and the row wraps
   // between groups on narrow screens. The MRP uses the secondary text colour (not
   // the lighter muted one) so the struck-through amount stays readable. Without a
-  // discount there is no MRP, so the plain price is shown (below).
-  if (size === 'detail' && hasDiscount) {
+  // genuine discount there is no MRP, so only the plain price is shown (below).
+  if (isDetailLayout && hasDiscount) {
     return (
       <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2', className)}>
         <span className="inline-flex items-baseline gap-1.5">
           <span className="text-sm font-medium text-ink-secondary">Offer Price:</span>
-          <span className="text-2xl font-bold leading-none text-ink">{formatInr(price)}</span>
+          <span
+            className={cn(
+              'text-2xl leading-none text-ink',
+              isOffer ? 'font-extrabold' : 'font-bold'
+            )}
+          >
+            {formatInr(price)}
+          </span>
         </span>
         <span className="inline-flex items-baseline gap-1.5">
           <span className="text-sm font-medium text-ink-secondary">MRP:</span>
@@ -43,47 +52,35 @@ export function ProductPrice({ price, originalPrice, className, size = 'default'
             {formatInr(originalPrice)}
           </span>
         </span>
-        <Badge variant="discount">{discountPct}% off</Badge>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className={cn(
-        'flex items-center',
-        isOffer ? 'flex-wrap gap-x-2.5 gap-y-1.5' : 'gap-1.5',
-        className
-      )}
-    >
-      <span
-        className={cn(
-          'leading-none text-ink',
-          size === 'detail' && 'text-2xl font-bold',
-          isOffer && 'text-2xl font-extrabold',
-          !isOffer && size !== 'detail' && 'text-[13.5px] font-extrabold'
-        )}
-      >
-        {formatInr(price)}
-      </span>
-      {hasDiscount && (
-        <span
-          className={cn(
-            'leading-none text-ink-muted line-through',
-            isOffer ? 'text-base' : 'text-xs'
-          )}
-        >
-          {formatInr(originalPrice)}
-        </span>
-      )}
-      {hasDiscount &&
-        (isOffer ? (
+        {isOffer ? (
           <span className="rounded bg-discount-bg px-2 py-1 text-xs font-bold leading-none text-discount">
             {discountPct}% off
           </span>
         ) : (
           <Badge variant="discount">{discountPct}% off</Badge>
-        ))}
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('flex items-center gap-1.5', className)}>
+      <span
+        className={cn(
+          'leading-none text-ink',
+          isDetailLayout ? 'text-2xl' : 'text-[13.5px] font-extrabold',
+          size === 'detail' && 'font-bold',
+          isOffer && 'font-extrabold'
+        )}
+      >
+        {formatInr(price)}
+      </span>
+      {hasDiscount && (
+        <span className="text-xs leading-none text-ink-muted line-through">
+          {formatInr(originalPrice)}
+        </span>
+      )}
+      {hasDiscount && <Badge variant="discount">{discountPct}% off</Badge>}
     </div>
   )
 }
