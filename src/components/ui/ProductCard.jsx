@@ -29,6 +29,12 @@ export function ProductCard({
 }) {
   const { name, image, badge, price, originalPrice, rating } = product
 
+  // A rating is only shown when it is a real number in (0, 5]. Missing (null), blank,
+  // non-numeric or zero values are treated as "no rating" - nothing is rendered, and
+  // no value is ever invented.
+  const ratingValue = rating === null || rating === undefined || rating === '' ? NaN : Number(rating)
+  const hasRating = Number.isFinite(ratingValue) && ratingValue > 0 && ratingValue <= 5
+
   const hasDiscount = originalPrice && originalPrice > price
   const discountPct = hasDiscount
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
@@ -144,38 +150,49 @@ export function ProductCard({
           {name}
         </h3>
 
-        {/* Desktop metadata layout (>=768px) */}
-        <div className="mt-auto hidden md:flex md:items-center md:justify-between">
-          <ProductPrice price={price} originalPrice={originalPrice} />
-          <ProductRating rating={rating} />
+        {/* Desktop metadata layout (>=768px): the discount badge (if any) sits above; the
+            bottom row holds the price on the left and the rating on the right. The price
+            group wraps internally when the card is narrow, so the rating never drops to
+            another line, overlaps the price, or gets clipped. */}
+        <div className="mt-auto hidden md:flex md:flex-col gap-1 min-w-0">
+          {hasDiscount && (
+            <div>
+              <Badge variant="discount">{discountPct}% off</Badge>
+            </div>
+          )}
+          <div className="flex items-baseline justify-between gap-2 min-w-0">
+            <ProductPrice
+              price={price}
+              originalPrice={originalPrice}
+              showBadge={false}
+              className="min-w-0"
+            />
+            {hasRating && <ProductRating rating={ratingValue} className="shrink-0" />}
+          </div>
         </div>
 
-        {/* Mobile metadata layout (<768px) */}
+        {/* Mobile metadata layout (<768px): same structure at the compact sizes. */}
         <div className="mt-auto flex flex-col gap-1 md:hidden min-w-0">
-          {/* Line 1: Current Price + Original Price */}
-          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-            <span className="text-[13px] sm:text-[13.5px] font-extrabold leading-none text-ink">
-              {formatInr(price)}
-            </span>
-            {hasDiscount && (
-              <span className="text-[11px] leading-none text-ink-muted line-through">
-                {formatInr(originalPrice)}
-              </span>
-            )}
-          </div>
-
-          {/* Line 2: Discount Badge + Rating */}
-          <div className="flex items-center justify-between min-w-0 mt-0.5">
+          {hasDiscount && (
             <div>
-              {hasDiscount ? (
-                <Badge variant="discount" className="text-[9.5px] px-1.5 py-0.5">
-                  {discountPct}% off
-                </Badge>
-              ) : (
-                <span />
+              <Badge variant="discount" className="text-[9.5px] px-1.5 py-0.5">
+                {discountPct}% off
+              </Badge>
+            </div>
+          )}
+
+          <div className="flex items-baseline justify-between gap-2 min-w-0">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0">
+              <span className="text-[13px] sm:text-[13.5px] font-extrabold leading-none text-ink">
+                {formatInr(price)}
+              </span>
+              {hasDiscount && (
+                <span className="text-[11px] leading-none text-ink-muted line-through">
+                  {formatInr(originalPrice)}
+                </span>
               )}
             </div>
-            <ProductRating rating={rating} />
+            {hasRating && <ProductRating rating={ratingValue} className="shrink-0" />}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { cn } from '../../utils/cn'
 import { Badge, Button, ProductPrice, ProductRating } from '../../components/ui'
+import { getValidRating } from '../../utils/rating'
 
 // .detail-badge-row / .detail-title / .detail-price-row / .color-options /
 // .detail-qty-wrapper / .detail-features / .detail-specs-table —
@@ -59,9 +60,11 @@ export function ProductInfo({
         </div>
       )}
 
-      <div className="mb-4">
-        <ProductRating rating={product.rating} showOutOfFive />
-      </div>
+      {getValidRating(product.rating) !== null && (
+        <div className="mb-4">
+          <ProductRating rating={product.rating} showOutOfFive />
+        </div>
+      )}
 
       <div className="mb-4">
         <ProductPrice

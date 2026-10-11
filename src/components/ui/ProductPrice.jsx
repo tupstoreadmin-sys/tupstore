@@ -15,13 +15,15 @@ function formatInr(amount) {
  * @param {number} props.price
  * @param {number} [props.originalPrice]
  * @param {string} [props.className] - applied to the wrapping row
+ * @param {boolean} [props.showBadge] - default layout only: set false when the caller
+ *   renders the discount badge itself (the product card puts it above the price row).
  * @param {'default'|'detail'|'offer'} [props.size] - 'detail' (Product Details page)
  *   and 'offer' (Promotion Detail page) are the two detail-page layouts. Both share
  *   one labelled layout for a genuinely discounted item ("Offer Price:", "MRP:",
  *   discount badge); they differ only in the badge size and price weight. Every
  *   other use (cards, quick view, enquiry list) keeps the compact default.
  */
-export function ProductPrice({ price, originalPrice, className, size = 'default' }) {
+export function ProductPrice({ price, originalPrice, className, size = 'default', showBadge = true }) {
   const discountPct = getDiscountPercent(price, originalPrice)
   const hasDiscount = discountPct !== null
   const isOffer = size === 'offer'
@@ -64,7 +66,7 @@ export function ProductPrice({ price, originalPrice, className, size = 'default'
   }
 
   return (
-    <div className={cn('flex items-center gap-1.5', className)}>
+    <div className={cn('flex flex-wrap items-center gap-x-1.5 gap-y-1', className)}>
       <span
         className={cn(
           'leading-none text-ink',
@@ -80,7 +82,7 @@ export function ProductPrice({ price, originalPrice, className, size = 'default'
           {formatInr(originalPrice)}
         </span>
       )}
-      {hasDiscount && <Badge variant="discount">{discountPct}% off</Badge>}
+      {hasDiscount && showBadge && <Badge variant="discount">{discountPct}% off</Badge>}
     </div>
   )
 }
