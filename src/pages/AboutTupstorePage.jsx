@@ -21,7 +21,7 @@ export default function AboutTupstorePage() {
     {
       icon: <IconMapPin className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />,
       label: 'Location:',
-      value: 'Laikkad Signal Jn., M.C. Road, Changanassery, Kottayam 686102',
+      value: 'Michuz Plaza, Laikkad Bypass Jn., MC Road, Changanassery, Kottayam 686102',
     },
     {
       icon: <IconClock className="h-5 w-5 text-ink-muted shrink-0 mt-0.5" />,

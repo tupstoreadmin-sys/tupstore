@@ -133,14 +133,14 @@ export const MOCK_FOOTER_COLUMNS = [
       { label: 'Official Store:', value: 'tupstore.in' },
       {
         label: 'Location:',
-        value: 'Laikkad Signal Jn., M.C. Road, Changanassery, Kottayam 686102',
+        value: 'Michuz Plaza, Laikkad Bypass Jn., MC Road, Changanassery, Kottayam 686102',
       },
       { label: 'Hours:', value: 'Mon - Sat: 10:00 AM - 8:00 PM' },
       { label: 'WhatsApp Support:', value: '+91 7736730041' },
       { label: 'Email Enquiry:', value: 'info@tupstore.in' },
     ],
     links: [
-      { label: 'Laikkad Signal Jn., M.C. Road, Changanassery, Kottayam 686102', href: '/contact' },
+      { label: 'Michuz Plaza, Laikkad Bypass Jn., MC Road, Changanassery, Kottayam 686102', href: '/contact' },
       { label: 'Mon - Sat: 10:00 AM - 8:00 PM', href: '/contact' },
       { label: '+91 7736730041', href: 'https://wa.me/917736730041' },
       { label: 'info@tupstore.in', href: 'mailto:info@tupstore.in' },

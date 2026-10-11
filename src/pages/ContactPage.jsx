@@ -171,7 +171,7 @@ export default function ContactPage() {
                   <li>
                     <strong className="text-ink">Store Location:</strong>
                     <p className="mt-0.5 text-ink-secondary">
-                      Laikkad Signal Jn., M.C. Road, Changanassery, Kottayam 686102
+                      Michuz Plaza, Laikkad Bypass Jn., MC Road, Changanassery, Kottayam 686102
                     </p>
                   </li>
                   <li>
