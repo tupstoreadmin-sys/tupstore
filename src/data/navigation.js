@@ -116,17 +116,15 @@ export const MOCK_FOOTER_COLUMNS = [
   {
     title: 'Categories',
     links: [
-      {
-        label: 'Bottles & Hydration',
-        href: '/shop?category=bottles-hydration',
-      },
-      { label: 'Lunch Box Sets', href: '/shop?category=lunch-boxes' },
-      {
-        label: 'Modular Kitchen Storage',
-        href: '/shop?category=kitchen-storage',
-      },
-      { label: 'Freezer Containers', href: '/shop?category=freezer-storage' },
-      { label: 'Thermal Flasks', href: '/shop?category=thermals-insulated' },
+      { label: 'All Products', href: '/shop' },
+      // The Shop page's category filter lists every customer-visible category.
+      { label: 'All Categories', href: '/shop' },
+      { label: 'Shop by Category', href: '/#shop-by-category' },
+      { label: 'Featured Offers', href: '/promotions' },
+      // `categoryName` is resolved to the live category id in App.jsx (the Shop page filters by id);
+      // if no category has that name the link falls back to the full catalogue.
+      { label: 'Trending Products', href: '/shop', categoryName: 'Trending Now' },
+      { label: 'Contact Us', href: '/contact' },
     ],
   },
   {
@@ -139,13 +137,13 @@ export const MOCK_FOOTER_COLUMNS = [
       },
       { label: 'Hours:', value: 'Mon - Sat: 10:00 AM - 8:00 PM' },
       { label: 'WhatsApp Support:', value: '+91 7736730041' },
-      { label: 'Email Enquiry:', value: 'store@tupstore.in' },
+      { label: 'Email Enquiry:', value: 'info@tupstore.in' },
     ],
     links: [
       { label: 'Laikkad Signal Jn., M.C. Road, Changanassery, Kottayam 686102', href: '/contact' },
       { label: 'Mon - Sat: 10:00 AM - 8:00 PM', href: '/contact' },
       { label: '+91 7736730041', href: 'https://wa.me/917736730041' },
-      { label: 'store@tupstore.in', href: 'mailto:store@tupstore.in' },
+      { label: 'info@tupstore.in', href: 'mailto:info@tupstore.in' },
     ],
   },
 ]

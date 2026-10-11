@@ -87,8 +87,8 @@ export function PromotionStrip({
     <div className={cn('w-full', className)}>
       {/* 1. Section Header & 2. Navigation Arrows */}
       {showHeader && (
-        <div className="mb-6 sm:mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="text-left">
+        <div className="mb-6 sm:mb-8 flex items-end justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 text-left">
             {eyebrow && (
               <span className="mb-1.5 block text-xs sm:text-[13px] font-semibold uppercase tracking-widest text-ink-secondary">
                 {eyebrow}
@@ -107,7 +107,7 @@ export function PromotionStrip({
           </div>
 
           {/* Top Right Navigation Arrow Buttons */}
-          <div className="flex items-center gap-2 self-start sm:self-end shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               aria-label="Previous slide"

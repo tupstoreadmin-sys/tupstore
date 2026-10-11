@@ -140,6 +140,26 @@ function AppShell() {
     return columns
   }, [categories])
 
+  // Footer links may carry a `categoryName`; resolve it to that category's live id
+  // (the Shop page filters by id), falling back to the plain catalogue if it is absent.
+  const footerColumns = useMemo(
+    () =>
+      MOCK_FOOTER_COLUMNS.map((col) =>
+        col.links
+          ? {
+              ...col,
+              links: col.links.map((link) => {
+                if (!link.categoryName) return link
+                const wanted = link.categoryName.trim().toLowerCase()
+                const match = (categories ?? []).find((c) => c.name.trim().toLowerCase() === wanted)
+                return { ...link, href: match ? `/shop?category=${match.id}` : link.href }
+              }),
+            }
+          : col
+      ),
+    [categories]
+  )
+
   const navLinks = useMemo(
     () =>
       MOCK_NAV_LINKS.map((link) =>
@@ -237,7 +257,7 @@ function AppShell() {
             </p>
           </div>
         }
-        linkColumns={MOCK_FOOTER_COLUMNS}
+        linkColumns={footerColumns}
         onNewsletterSubmit={handleNewsletterSubmit}
         newsletterStatus={newsletterStatus}
         newsletterMessage={newsletterMessage}

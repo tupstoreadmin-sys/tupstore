@@ -36,7 +36,7 @@ export default function AboutTupstorePage() {
     {
       icon: <IconMail className="h-5 w-5 text-ink-muted shrink-0 mt-0.5" />,
       label: 'Email:',
-      value: 'hello@tupstore.in',
+      value: 'info@tupstore.in',
     },
   ]
 

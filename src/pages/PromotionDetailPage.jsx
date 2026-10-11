@@ -7,6 +7,7 @@ import { useEnquiry } from '../contexts'
 import { promotionsRepository } from '../services/promotions'
 import { buildWhatsAppUrl } from '../utils/whatsapp'
 import { buildDefaultPromotionWhatsappMessage } from '../utils/buildPromotionWhatsappMessage'
+import { getDiscountPercent } from '../utils/discount'
 import {
   Container,
   Section,
@@ -75,6 +76,8 @@ export default function PromotionDetailPage() {
   }
 
   const products = promotion.products ?? []
+  const discountPct =
+    promotion.price != null ? getDiscountPercent(promotion.price, promotion.originalPrice) : null
   const isStaged = stagedPromotion?.id === promotion.id
   const whatsappMessage =
     promotion.whatsappText || buildDefaultPromotionWhatsappMessage(promotion)
@@ -98,12 +101,32 @@ export default function PromotionDetailPage() {
                 ProductGallery.jsx's own main image, just without its
                 multi-image thumbnail strip (a promotion has exactly one
                 image). Stacks above the offer content on mobile. */}
-            <div className="w-full overflow-hidden rounded-lg bg-surface-subtle md:mx-auto md:max-w-md">
+            <div className="relative w-full overflow-hidden rounded-lg bg-surface-subtle md:mx-auto md:max-w-md">
               <img
                 src={promotion.image}
                 alt={promotion.title}
                 className="aspect-square h-full w-full object-cover"
               />
+              {/* Discount sticker: a deep-red round badge with a double white line,
+                  positioned against this image box (top-right, inset from the
+                  edges). Decorative - the same percentage is in the price row - and
+                  never intercepts clicks. Shakes briefly now and then; static for
+                  prefers-reduced-motion. */}
+              {discountPct !== null && (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-3 flex h-14 w-14 select-none items-center justify-center rounded-full border-2 border-white bg-discount-sticker text-white shadow-md sm:right-4 sm:top-4 sm:h-16 sm:w-16 animate-stickerShake motion-reduce:animate-none"
+                >
+                  <span className="absolute inset-1 rounded-full border border-white/80" />
+                  <span className="relative flex flex-col items-center leading-none">
+                    <span className="text-lg font-extrabold sm:text-xl">
+                      {discountPct}
+                      <span className="text-xs font-bold sm:text-sm">%</span>
+                    </span>
+                    <span className="mt-0.5 text-xs font-extrabold uppercase tracking-wide">OFF</span>
+                  </span>
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col">
@@ -131,6 +154,7 @@ export default function PromotionDetailPage() {
                   <ProductPrice
                     price={promotion.price}
                     originalPrice={promotion.originalPrice}
+                    size="offer"
                     className="text-lg"
                   />
                 </div>

@@ -191,7 +191,7 @@ export default function HomePage() {
         />
       )}
 
-      <Section className="bg-surface-subtle">
+      <Section id="shop-by-category" className="scroll-mt-24 bg-surface-subtle">
         <Container>
           {categoriesLoading ? (
             <Spinner className="h-40 w-full" />

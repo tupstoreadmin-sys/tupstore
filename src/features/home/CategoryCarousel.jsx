@@ -73,7 +73,7 @@ export function CategoryCarousel({
   const showArrows = categories.length > 6
 
   const renderArrowControls = () => (
-    <div className="flex lg:hidden items-center gap-2 self-start sm:self-end shrink-0">
+    <div className="flex lg:hidden items-center gap-2 shrink-0">
       <button
         type="button"
         aria-label="Previous categories"
@@ -128,8 +128,8 @@ export function CategoryCarousel({
   return (
     <div className={cn('relative w-full', className)}>
       {showHeader && (
-        <div className="mb-6 sm:mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="text-left">
+        <div className="mb-6 sm:mb-8 flex items-end justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 text-left">
             {eyebrow && (
               <span className="mb-1.5 block text-xs sm:text-[13px] font-semibold uppercase tracking-widest text-ink-secondary">
                 {eyebrow}

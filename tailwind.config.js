@@ -43,6 +43,7 @@ export default {
         star: '#ffb800',
         discount: '#15803d', // .reel-discount-badge text
         'discount-bg': '#dcfce7', // .reel-discount-badge background
+        'discount-sticker': '#D92732', // promotion-detail image sticker (deep red)
         'badge-translucent': 'rgba(255, 255, 255, 0.92)', // §16 — .product-badge on-image background
         'header-glass': 'rgba(255, 255, 255, 0.88)', // .site-header background
         overlay: 'rgba(0, 0, 0, 0.5)', // .modal-overlay background
@@ -109,9 +110,19 @@ export default {
           '0%': { backgroundPosition: '200% 0' },
           '100%': { backgroundPosition: '-200% 0' },
         },
+        // Discount sticker: still for ~92% of the cycle, then one brief, small
+        // wobble (max 4deg, ~0.6s of an 8s cycle). Pair with motion-reduce:animate-none.
+        stickerShake: {
+          '0%, 91%, 100%': { transform: 'rotate(0deg)' },
+          '93%': { transform: 'rotate(-4deg)' },
+          '95%': { transform: 'rotate(4deg)' },
+          '97%': { transform: 'rotate(-2deg)' },
+          '99%': { transform: 'rotate(1deg)' },
+        },
       },
       animation: {
         loadingSkeleton: 'loadingSkeleton 1.5s infinite',
+        stickerShake: 'stickerShake 8s ease-in-out 2s infinite',
       },
     },
   },
