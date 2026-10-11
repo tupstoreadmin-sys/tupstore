@@ -114,7 +114,7 @@ export const MOCK_FOOTER_COLUMNS = [
     ],
   },
   {
-    title: 'Categories',
+    title: 'Explore',
     links: [
       { label: 'All Products', href: '/shop' },
       // The Shop page's category filter lists every customer-visible category.
