@@ -35,8 +35,8 @@ const FEATURES = [
   },
   {
     icon: IconTruck,
-    title: 'Doorstep Express Delivery',
-    description: 'Fast & safe delivery anywhere across Kerala',
+    title: 'Delivery Across Kerala',
+    description: 'Safe delivery to customers anywhere in Kerala',
   },
 ]
 

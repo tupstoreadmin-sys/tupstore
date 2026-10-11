@@ -14,12 +14,12 @@ import {
   CategoryCarousel,
   PromotionStrip,
   WhyChooseUs,
-  TestimonialCarousel,
   InstagramReels,
   TrustedDestination,
   SpecialistCTA,
+  GoogleReviews,
 } from '../features/home'
-import { MOCK_WHY_US, MOCK_TESTIMONIALS } from '../data'
+import { MOCK_WHY_US } from '../data'
 
 // Categories come from ProductRepository (real product-catalog data);
 // Reels now come from SocialVideosRepository (see
@@ -269,9 +269,12 @@ export default function HomePage() {
         </Container>
       </Section>
 
+      {/* Customer reviews: five genuine Google reviews (src/data/googleReviews.js) linking to the
+          real Google Maps listing. The earlier carousel used hardcoded template testimonials and
+          was removed. */}
       <Section>
         <Container>
-          <TestimonialCarousel testimonials={MOCK_TESTIMONIALS} />
+          <GoogleReviews />
         </Container>
       </Section>
 

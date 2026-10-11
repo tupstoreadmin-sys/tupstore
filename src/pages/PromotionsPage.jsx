@@ -132,7 +132,7 @@ export default function PromotionsPage() {
                   Looking for Custom Bulk Sets?
                 </h3>
                 <p className="text-sm md:text-base text-neutral-300 mb-6 leading-relaxed">
-                  We offer special wholesale and corporate gifting discounts for festivals, office events, and family functions across Kerala. Get a personalized invoice and custom product combo quote within 15 minutes on WhatsApp.
+                  We offer special wholesale and corporate gifting discounts for festivals, office events, and family functions across Kerala. Get a Custom Combo Quote on WhatsApp.
                 </p>
                 <a
                   href={`https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(

@@ -1,14 +1,41 @@
 import { useState, useEffect } from 'react'
 import { cn } from '../../utils/cn'
 
+// Google "G" mark (official four-colour logo paths) used to attribute reviews taken from Google.
+function GoogleMark({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  )
+}
+
+function getInitials(name = '') {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  const first = parts[0][0]
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
+  return (first + last).toUpperCase()
+}
+
 /**
  * @param {object} props
  * @param {string} [props.eyebrow]
  * @param {string} [props.title]
  * @param {string} [props.description]
  * @param {{id:string, name:string, role?:string, location?:string,
- *   avatar:string, text:string}[]} props.testimonials
+ *   avatar?:string, text:string, rating?:number, details?:string, date?:string,
+ *   href?:string, source?:'google'}[]} props.testimonials
+ *   - no `avatar`: a neutral initials circle is shown instead
+ *   - `details` (e.g. a Google reviewer line) replaces the `role • location` line
+ *   - `href`: the whole card becomes a link opening in a new tab
+ *   - `source: 'google'`: shows the Google mark on the card
  * @param {boolean} [props.showHeader]
+ * @param {import('react').ReactNode} [props.action] - rendered under the header description
+ * @param {import('react').ReactNode} [props.footerNote] - small note rendered under the track
  * @param {string} [props.className]
  */
 export function TestimonialCarousel({
@@ -17,6 +44,8 @@ export function TestimonialCarousel({
   description = 'Read genuine feedback from families across Kerala who rely on our authentic Tupperware products daily.',
   testimonials = [],
   showHeader = true,
+  action,
+  footerNote,
   className,
 }) {
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -68,8 +97,8 @@ export function TestimonialCarousel({
     <div className={cn('w-full', className)}>
       {/* 1. Section Header & Navigation Controls */}
       {showHeader && (
-        <div className="mb-6 sm:mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="text-left">
+        <div className="mb-6 sm:mb-8 flex items-end justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 text-left">
             {eyebrow && (
               <span className="mb-1.5 block text-xs sm:text-[13px] font-semibold uppercase tracking-widest text-ink-secondary">
                 {eyebrow}
@@ -85,10 +114,11 @@ export function TestimonialCarousel({
                 {description}
               </p>
             )}
+            {action && <div className="mt-4 sm:mt-5">{action}</div>}
           </div>
 
           {/* Top Right Navigation Arrow Buttons */}
-          <div className="flex items-center gap-2 self-start sm:self-end shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               aria-label="Previous testimonials"
@@ -149,43 +179,95 @@ export function TestimonialCarousel({
             transform: `translateX(calc(-${safeIndex} * (${stepPercentage}% + ${gapPx}px)))`,
           }}
         >
-          {testimonials.map((testimonial) => (
-            <div
-              key={testimonial.id}
-              className="flex w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] shrink-0 flex-col justify-between rounded-lg border border-hairline bg-white p-6 sm:p-8 transition-all duration-fast ease-brand hover:shadow-testimonial-hover"
-            >
-              <div>
-                <div
-                  className="mb-4 text-base text-star"
-                  style={{ letterSpacing: '2px' }}
-                >
-                  ★★★★★
-                </div>
-                <p className="mb-6 text-left text-[15px] italic leading-[1.65] text-ink">
-                  &ldquo;{testimonial.text}&rdquo;
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <img
-                  src={testimonial.avatar}
-                  alt={testimonial.name}
-                  className="h-12 w-12 rounded-full object-cover"
-                />
+          {testimonials.map((testimonial) => {
+            const cardClass =
+              'flex w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] shrink-0 flex-col justify-between rounded-lg border border-hairline bg-white p-6 sm:p-8 transition-all duration-fast ease-brand hover:shadow-testimonial-hover'
+            const rating = testimonial.rating ?? 5
+            const detailLine =
+              testimonial.details ??
+              [testimonial.role, testimonial.location].filter(Boolean).join(' • ')
+
+            const content = (
+              <>
                 <div>
-                  <div className="text-left text-[15px] font-bold leading-[1.3] text-ink">
-                    {testimonial.name}
+                  <div className="mb-4 flex items-center gap-3">
+                    {testimonial.avatar ? (
+                      <img
+                        src={testimonial.avatar}
+                        alt={testimonial.name}
+                        className="h-12 w-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-subtle text-[15px] font-bold text-ink-secondary"
+                        aria-hidden="true"
+                      >
+                        {getInitials(testimonial.name)}
+                      </div>
+                    )}
+                    <div className="min-w-0 text-left text-[15px] font-bold leading-[1.3] text-ink">
+                      {testimonial.name}
+                    </div>
                   </div>
-                  <div className="text-left text-[12.5px] leading-[1.4] text-ink-secondary">
-                    {[testimonial.role, testimonial.location]
-                      .filter(Boolean)
-                      .join(' • ')}
+                  <div className="mb-4 flex items-center gap-2.5">
+                    {testimonial.source === 'google' && (
+                      <GoogleMark className="h-5 w-5 shrink-0" />
+                    )}
+                    <div
+                      className="text-base text-star"
+                      style={{ letterSpacing: '2px' }}
+                      role="img"
+                      aria-label={`${rating} out of 5 stars`}
+                    >
+                      {'★'.repeat(rating)}
+                    </div>
                   </div>
+                  <p className="line-clamp-4 text-left text-[15px] italic leading-[1.65] text-ink">
+                    &ldquo;{testimonial.text}&rdquo;
+                  </p>
                 </div>
+                {(detailLine || testimonial.date) && (
+                  <div className="mt-5">
+                    {detailLine && (
+                      <div className="text-left text-[12.5px] leading-[1.4] text-ink-secondary">
+                        {detailLine}
+                      </div>
+                    )}
+                    {testimonial.date && (
+                      <div className="text-left text-[12.5px] leading-[1.4] text-ink-muted">
+                        {testimonial.date}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )
+
+            return testimonial.href ? (
+              <a
+                key={testimonial.id}
+                href={testimonial.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${testimonial.name}'s review on Google (opens in a new tab)`}
+                className={cardClass}
+              >
+                {content}
+              </a>
+            ) : (
+              <div key={testimonial.id} className={cardClass}>
+                {content}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
+
+      {footerNote && (
+        <p className="mt-5 text-left text-xs leading-relaxed text-ink-muted sm:text-[13px]">
+          {footerNote}
+        </p>
+      )}
     </div>
   )
 }

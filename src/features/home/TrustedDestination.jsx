@@ -38,9 +38,9 @@ export function TrustedDestination({ onLearnMore, className }) {
             className="mb-6"
           />
           <p className="mb-4 text-[15px] leading-relaxed text-ink-secondary">
-            Welcome to our Official Tupperware Exclusive Store franchise.
-            Serving families, working professionals, and culinary enthusiasts
-            across Kochi, Trivandrum, Kozhikode, and all of Kerala.
+            Welcome to our Official Tupperware Exclusive Store franchise,
+            located in Changanassery, Kottayam. We serve families, working
+            professionals, and culinary enthusiasts across all of Kerala.
           </p>
           <p className="mb-4 text-[15px] leading-relaxed text-ink-secondary">
             We believe in offering only 100% genuine, BPA-free, high-quality
@@ -52,8 +52,8 @@ export function TrustedDestination({ onLearnMore, className }) {
           <p className="mb-8 text-[15px] leading-relaxed text-ink-secondary">
             Browse our interactive catalog, add your preferred items to the
             Enquiry List, and send it directly to our WhatsApp consultation
-            team. We provide price quotes, combo discounts, and secure home
-            delivery options anywhere in Kerala.
+            team. We provide price quotes, combo discounts, and delivery
+            anywhere in Kerala.
           </p>
           <Button variant="primary" onClick={handleLearnMore}>
             Learn About Ongoing Offers

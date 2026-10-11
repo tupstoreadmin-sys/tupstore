@@ -34,7 +34,7 @@ export default function AboutTupperwarePage() {
       icon: <IconClock className="h-5 w-5 text-ink" />,
       title: 'Trusted Kerala Franchise',
       description:
-        'Serving thousands of happy families across Kochi, Trivandrum, Kozhikode & Thrissur.',
+        'Based in Changanassery, Kottayam, and serving customers across Kerala.',
     },
     {
       icon: <IconLeaf className="h-5 w-5 text-ink" />,
@@ -47,33 +47,6 @@ export default function AboutTupperwarePage() {
       title: 'Long-lasting Guarantee',
       description:
         "Backed by Tupperware's legendary quality assurance against chipping, warping, and cracking.",
-    },
-  ]
-
-  const testimonials = [
-    {
-      id: 't-1',
-      name: 'Dr. Lakshmi Menon',
-      title: 'Homemaker & Pediatrician • Kochi, Kerala',
-      quote:
-        '"As a doctor, food safety is my top priority. Buying genuine Tupperware from tupstore.in gives me total peace of mind that my family is using 100% BPA-free containers. The WhatsApp enquiry service was super responsive!"',
-      avatar: '/images/cat_kitchen.png',
-    },
-    {
-      id: 't-2',
-      name: 'Rajesh Varma',
-      title: 'IT Project Lead • Thiruvananthapuram, Kerala',
-      quote:
-        '"I needed a durable executive lunch box and thermal flask for long office shifts. Added items to the enquiry list and received a custom quote on WhatsApp within 10 minutes. Fast store pickup in TVM!"',
-      avatar: '/images/cat_bottles.png',
-    },
-    {
-      id: 't-3',
-      name: 'Anusha Sreenivasan',
-      title: 'Interior Designer • Kozhikode, Kerala',
-      quote:
-        '"The Modular Mates completely revamped my kitchen pantry! The black and clear aesthetic fits my modern Scandinavian kitchen perfectly. Highly recommend this official store."',
-      avatar: '/images/hero_kitchen.png',
     },
   ]
 
@@ -112,7 +85,7 @@ export default function AboutTupperwarePage() {
               <p className="text-sm sm:text-base text-ink-secondary leading-relaxed mb-4">
                 At{' '}
                 <strong className="text-ink font-semibold">tupstore.in</strong>{' '}
-                (Official Exclusive Store Franchise, MG Road Ernakulam), we
+                (Official Exclusive Store Franchise, Changanassery, Kottayam), we
                 believe that healthy living starts in the kitchen. Every product
                 in our catalogue is manufactured from 100% virgin food-grade
                 polymer materials, completely free from harmful BPA, lead, and
@@ -186,8 +159,8 @@ export default function AboutTupperwarePage() {
               The Official Tupperware Advantage
             </h2>
             <p className="mt-3 text-sm md:text-base text-ink-secondary">
-              Why thousands of families across Kochi, Trivandrum, Kozhikode &
-              Thrissur trust our exclusive store franchise.
+              Why families across Kerala trust our exclusive store franchise,
+              based in Changanassery, Kottayam.
             </p>
           </div>
 
@@ -214,59 +187,8 @@ export default function AboutTupperwarePage() {
         </Container>
       </Section>
 
-      {/* Section 3: Customer Reviews */}
-      <Section className="bg-surface-subtle py-16 md:py-24">
-        <Container>
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-ink-muted block mb-2">
-              CUSTOMER REVIEWS
-            </span>
-            <h2 className="font-heading text-2xl md:text-4xl font-extrabold text-ink tracking-tight">
-              Loved by Families Across Kerala
-            </h2>
-            <p className="mt-3 text-sm md:text-base text-ink-secondary">
-              Read genuine feedback from doctors, professionals, and homemakers
-              who rely on our products daily.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-col justify-between rounded-2xl border border-hairline bg-white p-6 md:p-8 shadow-subtle transition-all duration-fast hover:shadow-testimonial-hover"
-              >
-                <div>
-                  <div className="flex items-center gap-1 text-star mb-4">
-                    {'★'.repeat(5)}
-                  </div>
-                  <p className="text-sm md:text-[15px] italic text-ink-secondary leading-relaxed mb-6">
-                    {item.quote}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3.5 pt-4 border-t border-hairline">
-                  <div className="h-10 w-10 overflow-hidden rounded-full bg-neutral-200 shrink-0">
-                    <img
-                      src={item.avatar}
-                      alt={item.name}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <div className="font-heading text-sm font-bold text-ink">
-                      {item.name}
-                    </div>
-                    <div className="text-xs text-ink-muted">{item.title}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </Section>
-
       {/* Section 4: Ready to Upgrade Your Kitchen CTA */}
-      <Section className="py-12 md:py-20 bg-surface">
+      <Section className="pt-0 pb-12 md:pb-20 bg-surface">
         <Container>
           <div className="relative overflow-hidden rounded-3xl bg-[#0B131E] px-6 py-12 text-center text-white md:px-12 md:py-16 shadow-drawer">
             <div className="relative z-10 max-w-2xl mx-auto">

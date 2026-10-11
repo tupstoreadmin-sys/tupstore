@@ -171,7 +171,7 @@ export default function ContactPage() {
                   <li>
                     <strong className="text-ink">Store Location:</strong>
                     <p className="mt-0.5 text-ink-secondary">
-                      MG Road, Ernakulam / Kochi, Kerala 682016, India
+                      Laikkad Signal Jn., M.C. Road, Changanassery, Kottayam 686102
                     </p>
                   </li>
                   <li>

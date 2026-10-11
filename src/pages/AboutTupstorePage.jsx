@@ -12,16 +12,16 @@ import { SOCIAL_LINKS } from '../utils/socialLinks'
 
 export default function AboutTupstorePage() {
   useSEO({
-    title: 'About Tupstore | Tupperware Exclusive Store Thiruvalla',
+    title: 'About Tupstore | Tupperware Exclusive Store Changanassery',
     description:
-      'Visit our physical Tupperware Exclusive Store showroom in Thiruvalla, Pathanamthitta, Kerala. Experience authentic products, expert guidance, and custom kitchen storage sets.',
+      'Visit our physical Tupperware Exclusive Store showroom in Changanassery, Kottayam, Kerala. Experience authentic products, expert guidance, and custom kitchen storage sets.',
   })
 
   const storeDetails = [
     {
       icon: <IconMapPin className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />,
       label: 'Location:',
-      value: 'Thiruvalla, Pathanamthitta, Kerala 689101',
+      value: 'Laikkad Signal Jn., M.C. Road, Changanassery, Kottayam 686102',
     },
     {
       icon: <IconClock className="h-5 w-5 text-ink-muted shrink-0 mt-0.5" />,
@@ -37,33 +37,6 @@ export default function AboutTupstorePage() {
       icon: <IconMail className="h-5 w-5 text-ink-muted shrink-0 mt-0.5" />,
       label: 'Email:',
       value: 'info@tupstore.in',
-    },
-  ]
-
-  const testimonials = [
-    {
-      id: 't-1',
-      name: 'Dr. Lakshmi Menon',
-      title: 'Homemaker & Pediatrician • Kochi, Kerala',
-      quote:
-        '"As a doctor, food safety is my top priority. Buying genuine Tupperware from tupstore.in gives me total peace of mind that my family is using 100% BPA-free containers. The WhatsApp enquiry service was super responsive!"',
-      avatar: '/images/cat_kitchen.png',
-    },
-    {
-      id: 't-2',
-      name: 'Rajesh Varma',
-      title: 'IT Project Lead • Thiruvananthapuram, Kerala',
-      quote:
-        '"I needed a durable executive lunch box and thermal flask for long office shifts. Added items to the enquiry list and received a custom quote on WhatsApp within 10 minutes. Fast store pickup in TVM!"',
-      avatar: '/images/cat_bottles.png',
-    },
-    {
-      id: 't-3',
-      name: 'Anusha Sreenivasan',
-      title: 'Interior Designer • Kozhikode, Kerala',
-      quote:
-        '"The Modular Mates completely revamped my kitchen pantry! The black and clear aesthetic fits my modern Scandinavian kitchen perfectly. Highly recommend this official store."',
-      avatar: '/images/hero_kitchen.png',
     },
   ]
 
@@ -154,59 +127,8 @@ export default function AboutTupstorePage() {
         </Container>
       </Section>
 
-      {/* Section 2: Customer Reviews */}
-      <Section className="bg-surface-subtle py-16 md:py-24">
-        <Container>
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-ink-muted block mb-2">
-              CUSTOMER REVIEWS
-            </span>
-            <h2 className="font-heading text-2xl md:text-4xl font-extrabold text-ink tracking-tight">
-              Loved by Families Across Kerala
-            </h2>
-            <p className="mt-3 text-sm md:text-base text-ink-secondary">
-              Read genuine feedback from doctors, professionals, and homemakers
-              who rely on our products daily.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((item) => (
-              <div
-                key={item.id}
-                className="flex flex-col justify-between rounded-2xl border border-hairline bg-white p-6 md:p-8 shadow-subtle transition-all duration-fast hover:shadow-testimonial-hover"
-              >
-                <div>
-                  <div className="flex items-center gap-1 text-star mb-4">
-                    {'★'.repeat(5)}
-                  </div>
-                  <p className="text-sm md:text-[15px] italic text-ink-secondary leading-relaxed mb-6">
-                    {item.quote}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3.5 pt-4 border-t border-hairline">
-                  <div className="h-10 w-10 overflow-hidden rounded-full bg-neutral-200 shrink-0">
-                    <img
-                      src={item.avatar}
-                      alt={item.name}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <div className="font-heading text-sm font-bold text-ink">
-                      {item.name}
-                    </div>
-                    <div className="text-xs text-ink-muted">{item.title}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </Section>
-
       {/* Section 3: Visit Our Showroom Card */}
-      <Section className="py-12 md:py-20 bg-surface">
+      <Section className="pt-0 pb-12 md:pb-20 bg-surface">
         <Container>
           <div className="overflow-hidden rounded-3xl bg-[#0B131E] p-8 md:p-14 text-white shadow-drawer">
             <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-12">
@@ -215,7 +137,7 @@ export default function AboutTupstorePage() {
                   VISIT OUR SHOWROOM
                 </span>
                 <h2 className="font-heading text-2xl md:text-4xl font-extrabold tracking-tight text-white mb-4 leading-tight">
-                  Tupperware Exclusive Store Thiruvalla, Pathanamthitta
+                  Tupperware Exclusive Store Changanassery, Kottayam
                 </h2>
                 <p className="text-sm md:text-base text-neutral-300 mb-8 leading-relaxed">
                   Experience the full product range in person! Our showroom
@@ -243,7 +165,7 @@ export default function AboutTupstorePage() {
                 <div className="overflow-hidden rounded-2xl border border-white/10 shadow-modal">
                   <img
                     src="/images/hero_kitchen.png"
-                    alt="Tupperware Showroom Thiruvalla"
+                    alt="Tupperware Showroom Changanassery"
                     className="h-64 sm:h-72 w-full object-cover"
                   />
                 </div>
