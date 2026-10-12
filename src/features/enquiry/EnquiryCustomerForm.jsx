@@ -76,7 +76,7 @@ export function EnquiryCustomerForm({
         value={customerName}
         onChange={(e) => setCustomerName(e.target.value)}
         error={fieldErrors.customerName}
-        placeholder="e.g. Anjali Nair"
+        placeholder="e.g. Anjali"
         disabled={submitting}
       />
       <Input
