@@ -255,7 +255,7 @@ export default function ContactPage() {
                       value={form.name}
                       onChange={setField('name')}
                       error={fieldErrors.name}
-                      placeholder="e.g. Anjali Nair"
+                      placeholder="e.g. Anjali"
                       disabled={submitting}
                     />
                     <Input
