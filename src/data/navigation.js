@@ -124,7 +124,6 @@ export const MOCK_FOOTER_COLUMNS = [
       // `categoryName` is resolved to the live category id in App.jsx (the Shop page filters by id);
       // if no category has that name the link falls back to the full catalogue.
       { label: 'Trending Products', href: '/shop', categoryName: 'Trending Now' },
-      { label: 'Contact Us', href: '/contact' },
     ],
   },
   {
