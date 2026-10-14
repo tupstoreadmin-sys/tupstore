@@ -134,7 +134,7 @@ export default function ShopPage() {
     <>
       <PageBanner
         title="Exclusive Product Catalogue"
-        image="/images/hero_banner_kitchen.png"
+        image="/images/product top banner-04.png"
       />
       <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Shop' }]} />
 

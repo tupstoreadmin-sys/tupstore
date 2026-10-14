@@ -27,30 +27,10 @@ import {
 // Enquiry state comes from EnquiryContext/useAddToEnquiry directly (no
 // longer passed down as props from App) — see ARCHITECTURE.md §5/§8.
 
-// Looked up by product.categorySlug || product.category (see bannerImage
-// below) — covers both backends with one table:
-//   - Supabase mode: product.categorySlug is the canonical category slug
-//     (db/migrations/0004_canonical_categories.sql), never a raw
-//     category_id UUID, which couldn't usefully key a static lookup.
-//   - Mock mode: MockProductRepository never sets categorySlug, so this
-//     falls back to product.category, which still holds the original
-//     mock-era ids (kitchen/freezer/lunch/bottles/thermals) — mock data was
-//     not touched, so those ids are preserved here rather than migrated.
-// `bottles`/`thermals` happen to be spelled identically in both schemes, so
-// they only need one entry each. Only categories with an existing
-// dedicated banner asset get an entry; everything else (any other
-// Supabase category, or an unmatched mock id) falls through to the
-// existing default banner below. No new banner artwork was added.
-const CATEGORY_BANNERS = {
-  'dry-storages': '/images/hero_banner_kitchen.png', // Supabase — old mock "kitchen"
-  'freezer-storages': '/images/hero_banner_kitchen.png', // Supabase — old mock "freezer"
-  'lunch-on-the-go': '/images/hero_banner_kitchen.png', // Supabase — old mock "lunch"
-  bottles: '/images/hero_banner_bottles.png', // both Supabase and mock
-  thermals: '/images/hero_banner_bottles.png', // both Supabase and mock
-  kitchen: '/images/hero_banner_kitchen.png', // mock only
-  freezer: '/images/hero_banner_kitchen.png', // mock only
-  lunch: '/images/hero_banner_kitchen.png', // mock only
-}
+// Same banner as the Shop listing (ShopPage.jsx) for every product, so the
+// two page types stay visually consistent. Replaces the earlier per-category
+// lookup (hero_banner_kitchen / hero_banner_bottles).
+const PRODUCT_BANNER = '/images/product top banner-04.png'
 
 export default function ProductDetailPage({ recentlyViewedIds, onView }) {
   const { slug } = useParams()
@@ -119,14 +99,9 @@ export default function ProductDetailPage({ recentlyViewedIds, onView }) {
     )
   }
 
-  const bannerImage =
-    product.bannerImage ||
-    CATEGORY_BANNERS[product.categorySlug || product.category] ||
-    '/images/hero_banner_kitchen.png'
-
   return (
     <>
-      <PageBanner title={product.name} image={bannerImage} />
+      <PageBanner title={product.name} image={PRODUCT_BANNER} />
       <Breadcrumb
         items={[
           { label: 'Home', href: '/' },
