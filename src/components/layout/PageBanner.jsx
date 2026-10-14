@@ -18,7 +18,8 @@ export function PageBanner({ title, image, className }) {
         'relative flex h-40 items-center bg-banner-dark bg-cover bg-center md:h-[220px]',
         className
       )}
-      style={image ? { backgroundImage: `url(${image})` } : undefined}
+      // Quoted so paths/URLs containing spaces or parentheses stay valid CSS.
+      style={image ? { backgroundImage: `url("${image}")` } : undefined}
     >
       <div
         className="absolute inset-0"

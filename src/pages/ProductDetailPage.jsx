@@ -30,7 +30,7 @@ import {
 // Same banner as the Shop listing (ShopPage.jsx) for every product, so the
 // two page types stay visually consistent. Replaces the earlier per-category
 // lookup (hero_banner_kitchen / hero_banner_bottles).
-const PRODUCT_BANNER = '/images/product top banner-04.png'
+const PRODUCT_BANNER = '/images/products_banner.webp'
 
 export default function ProductDetailPage({ recentlyViewedIds, onView }) {
   const { slug } = useParams()
