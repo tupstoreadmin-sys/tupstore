@@ -627,24 +627,25 @@ export default function AdminProductFormPage() {
             </p>
           </fieldset>
 
+          {/* Row order on sm+ (2 cols): Original Price | Price,
+              Availability | Badge, Capacity | Rating, Colors. Categories
+              above spans both columns, so Original Price always starts a
+              fresh row and the two prices sit side by side. */}
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">
-              Availability *
+              Original Price (₹)
             </label>
-            <select
-              value={form.availability}
-              onChange={setField('availability')}
+            <input
+              type="text"
+              inputMode="decimal"
+              value={form.originalPrice}
+              onChange={setField('originalPrice')}
               disabled={submitting}
+              placeholder="Optional"
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
-            >
-              {AVAILABILITY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {errors.availability && (
-              <p className="mt-1 text-xs text-red-600">{errors.availability}</p>
+            />
+            {errors.originalPrice && (
+              <p className="mt-1 text-xs text-red-600">{errors.originalPrice}</p>
             )}
           </div>
 
@@ -667,19 +668,22 @@ export default function AdminProductFormPage() {
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">
-              Original Price (₹)
+              Availability *
             </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={form.originalPrice}
-              onChange={setField('originalPrice')}
+            <select
+              value={form.availability}
+              onChange={setField('availability')}
               disabled={submitting}
-              placeholder="Optional"
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
-            />
-            {errors.originalPrice && (
-              <p className="mt-1 text-xs text-red-600">{errors.originalPrice}</p>
+            >
+              {AVAILABILITY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {errors.availability && (
+              <p className="mt-1 text-xs text-red-600">{errors.availability}</p>
             )}
           </div>
 
