@@ -629,30 +629,6 @@ export default function AdminProductFormPage() {
 
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">
-              Status *
-            </label>
-            <select
-              value={form.status}
-              onChange={setField('status')}
-              disabled={submitting}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-400">
-              Only Published products appear on the storefront.
-            </p>
-            {errors.status && (
-              <p className="mt-1 text-xs text-red-600">{errors.status}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">
               Availability *
             </label>
             <select
@@ -823,6 +799,34 @@ export default function AdminProductFormPage() {
           />
           Featured product
         </label>
+
+        {/* Same 2-col grid as the main field block so Status keeps its
+            half-width column on sm+ screens. */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-600">
+              Status *
+            </label>
+            <select
+              value={form.status}
+              onChange={setField('status')}
+              disabled={submitting}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500 disabled:opacity-50"
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              Only Published products appear on the storefront.
+            </p>
+            {errors.status && (
+              <p className="mt-1 text-xs text-red-600">{errors.status}</p>
+            )}
+          </div>
+        </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <Link
