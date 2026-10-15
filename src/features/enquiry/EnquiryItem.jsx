@@ -1,4 +1,5 @@
 import { cn } from '../../utils/cn'
+import { ProtectedImage } from '../../components/ui'
 import { IconClose } from '../../components/layout/icons'
 
 // .enquiry-item / .quantity-controls / .qty-btn — DESIGN_SYSTEM.md §18.
@@ -28,7 +29,7 @@ export function EnquiryItem({
         className
       )}
     >
-      <img
+      <ProtectedImage
         src={item.image}
         alt={item.name}
         className="h-[60px] w-[60px] shrink-0 rounded-sm bg-white object-contain p-1"

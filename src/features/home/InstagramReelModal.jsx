@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '../../utils/cn'
+import { ProtectedImage } from '../../components/ui'
 import {
   IconClose,
   IconInstagram,
@@ -414,7 +415,7 @@ export function InstagramReelModal({
                   >
                     {/* Square Image Thumbnail */}
                     <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-zinc-800 mb-2">
-                      <img
+                      <ProtectedImage
                         src={product.image || currentReel.image}
                         alt={product.name}
                         className="h-full w-full object-cover"

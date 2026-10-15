@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { Badge, Button, ProductPrice, ProductRating } from '../../components/ui'
+import {
+  Badge,
+  Button,
+  ProductPrice,
+  ProductRating,
+  ProtectedImage,
+} from '../../components/ui'
 import { IconClose } from '../../components/layout/icons'
 
 // Secondary modal layered above InstagramReelModal (z-[400], above the
@@ -61,7 +67,7 @@ export function ProductQuickViewModal({
         </button>
 
         <div className="h-56 w-full shrink-0 overflow-hidden bg-surface-subtle sm:h-64 md:h-auto md:w-[45%]">
-          <img
+          <ProtectedImage
             src={product.image}
             alt={product.name}
             className="h-full w-full object-cover"

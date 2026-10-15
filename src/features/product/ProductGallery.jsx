@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { cn } from '../../utils/cn'
+import { ProtectedImage } from '../../components/ui'
 
 // .gallery-main / .gallery-thumbs — DESIGN_SYSTEM.md §16/§18.
 // Supports 1, 2, 4, 6+ dynamic images with mobile touch swipe gestures,
@@ -49,7 +50,7 @@ export function ProductGallery({ images = [], alt = '', className }) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <img
+        <ProtectedImage
           src={images[safeActiveIndex]}
           alt={alt ? `${alt} - Image ${safeActiveIndex + 1}` : `Product Image ${safeActiveIndex + 1}`}
           className="h-full w-full object-cover transition-opacity duration-fast ease-brand"
@@ -82,7 +83,7 @@ export function ProductGallery({ images = [], alt = '', className }) {
                     : 'border-transparent opacity-60 hover:opacity-100'
                 )}
               >
-                <img
+                <ProtectedImage
                   src={img}
                   alt={`Thumbnail ${i + 1}`}
                   className="h-full w-full object-cover"

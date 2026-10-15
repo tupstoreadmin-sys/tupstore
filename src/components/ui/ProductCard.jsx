@@ -4,6 +4,7 @@ import { Badge } from './Badge'
 import { Button } from './Button'
 import { ProductPrice } from './ProductPrice'
 import { ProductRating } from './ProductRating'
+import { ProtectedImage } from './ProtectedImage'
 
 // DESIGN_SYSTEM.md §16 — full spec. Presentation-only: takes a plain
 // `product` object and callback props, owns no state, does no data
@@ -65,7 +66,7 @@ export function ProductCard({
     >
       {/* Image wrapper — 320px desktop, 160px mobile */}
       <div className="relative h-[160px] sm:h-[180px] md:h-[320px] overflow-hidden bg-surface-subtle shrink-0">
-        <img
+        <ProtectedImage
           src={image}
           alt={name}
           className="h-full w-full object-cover transition-transform duration-smooth ease-brand group-hover:scale-[1.04]"
