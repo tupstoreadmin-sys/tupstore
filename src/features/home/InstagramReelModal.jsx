@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '../../utils/cn'
 import { ProtectedImage } from '../../components/ui'
@@ -36,6 +36,9 @@ export function InstagramReelModal({
   const [copied, setCopied] = useState(false)
   const [quickViewProduct, setQuickViewProduct] = useState(null)
   const videoRef = useRef(null)
+  const productScrollerRef = useRef(null)
+  const [canScrollProductsLeft, setCanScrollProductsLeft] = useState(false)
+  const [canScrollProductsRight, setCanScrollProductsRight] = useState(false)
   const navigate = useNavigate()
 
   const addToEnquiry = useAddToEnquiry()
@@ -85,6 +88,32 @@ export function InstagramReelModal({
     }
   }, [isOpen, selectedIndex, reels.length, onClose, onSelectIndex, quickViewProduct])
 
+  // Tagged-product strip scroll state — same approach as
+  // CategoryCarousel.jsx: arrows (md+ only) are shown only while there is
+  // more to scroll in that direction.
+  const checkProductScroll = useCallback(() => {
+    const el = productScrollerRef.current
+    if (!el) return
+    const { scrollLeft, scrollWidth, clientWidth } = el
+    const tolerance = 6
+    setCanScrollProductsLeft(scrollLeft > tolerance)
+    setCanScrollProductsRight(scrollLeft + clientWidth < scrollWidth - tolerance)
+  }, [])
+
+  useEffect(() => {
+    const el = productScrollerRef.current
+    if (!isOpen || !el) return
+    // Each reel starts from its first tagged product.
+    el.scrollLeft = 0
+    checkProductScroll()
+    el.addEventListener('scroll', checkProductScroll, { passive: true })
+    window.addEventListener('resize', checkProductScroll)
+    return () => {
+      el.removeEventListener('scroll', checkProductScroll)
+      window.removeEventListener('resize', checkProductScroll)
+    }
+  }, [isOpen, selectedIndex, reels, checkProductScroll])
+
   if (!isOpen || !reels.length) return null
 
   const currentReel = reels[selectedIndex] || reels[0]
@@ -127,6 +156,16 @@ export function InstagramReelModal({
     e?.stopPropagation()
     resetPlaybackAndShare()
     onSelectIndex?.(nextIndex)
+  }
+
+  // Steps the tagged-product strip by one card (card width + gap-2).
+  const scrollProducts = (direction, e) => {
+    e.stopPropagation()
+    const el = productScrollerRef.current
+    if (!el) return
+    const firstCard = el.firstElementChild
+    const step = firstCard ? firstCard.offsetWidth + 8 : el.clientWidth / 2
+    el.scrollBy({ left: direction * step, behavior: 'smooth' })
   }
 
   // Native Web Share API first (opens the OS/browser's own share sheet —
@@ -339,8 +378,11 @@ export function InstagramReelModal({
               />
             )}
 
-            {/* Dark Gradient Overlay for Header & Footer Legibility */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90 pointer-events-none" />
+            {/* Light top/bottom bands only — just enough contrast behind the
+                header pills and product strip; the rest of the video is
+                left untouched. */}
+            <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/30 to-transparent pointer-events-none" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/35 to-transparent pointer-events-none" />
 
             {/* Center Play Button Control */}
             {!isPlaying && !youtubeEmbedUrl && (
@@ -349,106 +391,159 @@ export function InstagramReelModal({
               </div>
             )}
 
-            {/* Share Button (Positioned on top-right of bottom cards) */}
-            <div className="absolute right-5 bottom-[215px] z-40">
-              <button
-                type="button"
-                aria-label="Share reel"
-                onClick={handleShareClick}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-black/80 border border-white/20 text-white shadow-2xl transition-all duration-fast hover:bg-black hover:scale-105 cursor-pointer"
-              >
-                <IconShare className="h-5 w-5 text-white" />
-              </button>
-
-              {/* Share Menu Popup */}
-              {isShareOpen && (
-                <div
-                  className="absolute right-0 bottom-14 z-50 w-52 rounded-xl bg-zinc-900/95 border border-white/20 p-2 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-fast"
-                  onClick={(e) => e.stopPropagation()}
+            {/* Bottom stack: Share button sits directly above the product
+                strip, so it follows the strip's real height. The wrapper
+                ignores pointer events so taps on the video between controls
+                still toggle playback. */}
+            <div className="absolute inset-x-0 bottom-2.5 z-30 flex flex-col pointer-events-none">
+              {/* Share Button (Positioned on top-right of bottom cards) */}
+              <div className="relative self-end mr-3 mb-2 z-40 pointer-events-auto">
+                <button
+                  type="button"
+                  aria-label="Share reel"
+                  onClick={handleShareClick}
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-black/80 border border-white/20 text-white shadow-2xl transition-all duration-fast hover:bg-black hover:scale-105 cursor-pointer"
                 >
-                  <button
-                    type="button"
-                    onClick={handleShareWhatsApp}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-wa hover:bg-white/10 transition-colors cursor-pointer"
-                  >
-                    <IconWhatsApp className="h-4 w-4 fill-current" />
-                    <span>Share to WhatsApp</span>
-                  </button>
+                  <IconShare className="h-5 w-5 text-white" />
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={handleCopyLink}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-white hover:bg-white/10 transition-colors cursor-pointer"
+                {/* Share Menu Popup */}
+                {isShareOpen && (
+                  <div
+                    className="absolute right-0 bottom-14 z-50 w-52 rounded-xl bg-zinc-900/95 border border-white/20 p-2 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-fast"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {copied ? (
-                      <IconCheck className="h-4 w-4 text-wa" />
-                    ) : (
-                      <IconLink className="h-4 w-4" />
-                    )}
-                    <span>{copied ? 'Link Copied!' : 'Copy Product Link'}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={handleShareWhatsApp}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-wa hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                      <IconWhatsApp className="h-4 w-4 fill-current" />
+                      <span>Share to WhatsApp</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                      {copied ? (
+                        <IconCheck className="h-4 w-4 text-wa" />
+                      ) : (
+                        <IconLink className="h-4 w-4" />
+                      )}
+                      <span>{copied ? 'Link Copied!' : 'Copy Product Link'}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Tagged Product Cards at Bottom of Active Reel — a compact
+                  horizontal strip. md+: two cards visible, arrows step through
+                  the rest. <md: no arrows, native swipe with scroll-snap; with
+                  3+ products each card narrows so the next one peeks in at the
+                  right edge. touch-pan-x keeps a horizontal swipe here from
+                  being read as a vertical gesture. */}
+              {products.length > 0 && (
+                <div className="relative pointer-events-auto">
+                  <div
+                    ref={productScrollerRef}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mx-3 flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain touch-pan-x"
+                  >
+                    {products.map((product) => (
+                      <div
+                        key={product.id || product.name}
+                        className={cn(
+                          'relative shrink-0 snap-start rounded-xl bg-[#18181b]/90 backdrop-blur-md border border-white/15 p-2 text-white flex flex-col justify-between gap-1.5 shadow-2xl',
+                          products.length > 2
+                            ? 'w-[calc((100%-16px)/2.25)] md:w-[calc((100%-8px)/2)]'
+                            : 'w-[calc((100%-8px)/2)]'
+                        )}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Opens the Quick View modal — wraps only the
+                            image/name/price area (never the button below) so
+                            this stays valid, non-nested interactive HTML. A real
+                            product-detail navigation only happens from inside
+                            Quick View's "View Product Details" action. */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setQuickViewProduct(product)
+                          }}
+                          aria-label={`Quick view ${product.name}`}
+                          className="flex w-full items-center gap-2 border-0 bg-transparent p-0 text-left cursor-pointer"
+                        >
+                          {/* Small Square Image Thumbnail */}
+                          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-md bg-zinc-800">
+                            <ProtectedImage
+                              src={product.image || currentReel.image}
+                              alt={product.name}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            {/* Title & External Link Icon */}
+                            <div className="flex items-start gap-1">
+                              <h5 className="min-w-0 flex-1 text-[11px] font-bold text-white line-clamp-2 leading-tight">
+                                {product.name}
+                              </h5>
+                              <IconExternalLink className="mt-px h-3 w-3 shrink-0 text-white/70" />
+                            </div>
+
+                            {/* Price in Green */}
+                            <div className="mt-0.5 text-xs font-black text-wa">
+                              ₹{product.price?.toLocaleString()}
+                            </div>
+                          </div>
+                        </button>
+
+                        {/* ADD TO ENQUIRY Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            addToEnquiry(product)
+                          }}
+                          className="w-full rounded-lg border border-white/20 bg-white/10 hover:bg-white/25 active:scale-95 text-white text-[10px] font-extrabold tracking-wider py-1 uppercase transition-all duration-fast flex items-center justify-center cursor-pointer"
+                        >
+                          ADD TO ENQUIRY
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Product strip arrows — md+ only, each shown only while there
+                      is more to scroll in its direction. */}
+                  {canScrollProductsLeft && (
+                    <button
+                      type="button"
+                      aria-label="Previous products"
+                      onClick={(e) => scrollProducts(-1, e)}
+                      className="hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 items-center justify-center rounded-full bg-black/60 border border-white/20 text-white shadow-lg backdrop-blur-sm transition-all duration-fast hover:bg-black/85 cursor-pointer"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
+                    </button>
+                  )}
+                  {canScrollProductsRight && (
+                    <button
+                      type="button"
+                      aria-label="Next products"
+                      onClick={(e) => scrollProducts(1, e)}
+                      className="hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 items-center justify-center rounded-full bg-black/60 border border-white/20 text-white shadow-lg backdrop-blur-sm transition-all duration-fast hover:bg-black/85 cursor-pointer"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               )}
-            </div>
-
-            {/* Tagged Product Cards at Bottom of Active Reel */}
-            <div className="absolute inset-x-3 bottom-3 z-30 flex gap-2.5">
-              {products.map((product) => (
-                <div
-                  key={product.id || product.name}
-                  className="relative w-[calc(50%-5px)] shrink-0 rounded-xl bg-[#18181b]/90 backdrop-blur-md border border-white/15 p-2.5 text-white flex flex-col justify-between shadow-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Opens the Quick View modal — wraps only the
-                      image/name/price area (never the button below) so
-                      this stays valid, non-nested interactive HTML. A real
-                      product-detail navigation only happens from inside
-                      Quick View's "View Product Details" action. */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setQuickViewProduct(product)
-                    }}
-                    aria-label={`Quick view ${product.name}`}
-                    className="flex w-full flex-col border-0 bg-transparent p-0 text-left cursor-pointer"
-                  >
-                    {/* Square Image Thumbnail */}
-                    <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-zinc-800 mb-2">
-                      <ProtectedImage
-                        src={product.image || currentReel.image}
-                        alt={product.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-
-                    {/* Title & External Link Icon */}
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <h5 className="text-[11px] font-bold text-white line-clamp-1 leading-tight">
-                        {product.name}
-                      </h5>
-                      <IconExternalLink className="h-3 w-3 shrink-0 text-white/70" />
-                    </div>
-
-                    {/* Price in Green */}
-                    <div className="text-xs font-black text-wa mb-2">
-                      ₹{product.price?.toLocaleString()}
-                    </div>
-                  </button>
-
-                  {/* ADD TO ENQUIRY Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      addToEnquiry(product)
-                    }}
-                    className="w-full rounded-lg border border-white/20 bg-white/10 hover:bg-white/25 active:scale-95 text-white text-[10px] font-extrabold tracking-wider py-1.5 uppercase transition-all duration-fast flex items-center justify-center cursor-pointer"
-                  >
-                    ADD TO ENQUIRY
-                  </button>
-                </div>
-              ))}
             </div>
           </div>
         </div>
